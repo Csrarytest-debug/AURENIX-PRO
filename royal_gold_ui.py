@@ -73,6 +73,9 @@ class RoyalGoldMixin:
         self.setMinimumSize(1160, 700)
         self.setStyleSheet(STYLE)
         self.quality = "High"
+        # Prefer the approved D: output path only when that drive exists.
+        if Path("D:/").is_dir():
+            self.output_dir = Path("D:/AURENIX PRO/Output")
 
         central = QWidget()
         self.setCentralWidget(central)
