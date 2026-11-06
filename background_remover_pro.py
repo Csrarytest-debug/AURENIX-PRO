@@ -4,7 +4,7 @@ import sys
 import threading
 from pathlib import Path
 
-from PIL import Image, ImageOps, ImageDraw, ImageEnhance
+from PIL import Image, ImageOps, ImageDraw, ImageEnhance, ImageFilter
 from rembg import remove, new_session
 
 from PySide6.QtCore import Qt, QThread, Signal
@@ -119,7 +119,9 @@ class BatchWorker(QThread):
 
     def __init__(
         self, images, output_dir, width, height,
-        mode="offline", api_key="", color_boost=100
+        mode="offline", api_key="", color_boost=100,
+        transparent=False, sharpness=False, denoise=False,
+        detail=False, quality="High"
     ):
         super().__init__()
 
@@ -130,6 +132,11 @@ class BatchWorker(QThread):
         self.mode = mode
         self.api_key = api_key
         self.color_boost = color_boost
+        self.transparent = transparent
+        self.sharpness = sharpness
+        self.denoise = denoise
+        self.detail = detail
+        self.quality = quality
 
         self.resume_event = threading.Event()
         self.resume_event.set()
@@ -244,10 +251,29 @@ class BatchWorker(QThread):
                     result = rgb.convert("RGBA")
                     result.putalpha(alpha)
 
-                # Opaque white PNG output.
-                white = Image.new("RGBA", result.size, "#FFFFFF")
-                white.alpha_composite(result)
-                result = white.convert("RGB")
+                # Optional image enhancement; preserve the alpha mask.
+                if self.denoise or self.sharpness or self.detail:
+                    alpha = result.getchannel("A")
+                    rgb = result.convert("RGB")
+                    if self.denoise:
+                        rgb = rgb.filter(ImageFilter.MedianFilter(size=3))
+                    if self.sharpness:
+                        rgb = ImageEnhance.Sharpness(rgb).enhance(
+                            1.25 if self.quality == "High" else 1.5
+                        )
+                    if self.detail:
+                        rgb = rgb.filter(ImageFilter.UnsharpMask(
+                            radius=1.2, percent=115 if self.quality == "High" else 160,
+                            threshold=3
+                        ))
+                    result = rgb.convert("RGBA")
+                    result.putalpha(alpha)
+
+                # User-selectable PNG alpha or pure-white background.
+                if not self.transparent:
+                    white = Image.new("RGBA", result.size, "#FFFFFF")
+                    white.alpha_composite(result)
+                    result = white.convert("RGB")
 
                 output = output_filename(
                     self.output_dir,
@@ -992,6 +1018,23 @@ class BackgroundRemoverPro(QMainWindow):
                 getattr(self, "color_boost", None), "value",
                 lambda: 100
             )(),
+            transparent=(
+                getattr(self, "output_format", None) is not None
+                and self.output_format.currentIndex() == 0
+            ),
+            sharpness=(
+                getattr(self, "sharpness_check", None) is not None
+                and self.sharpness_check.isChecked()
+            ),
+            denoise=(
+                getattr(self, "denoise_check", None) is not None
+                and self.denoise_check.isChecked()
+            ),
+            detail=(
+                getattr(self, "detail_check", None) is not None
+                and self.detail_check.isChecked()
+            ),
+            quality=getattr(self, "quality", "High"),
         )
 
         self.worker.progress.connect(
