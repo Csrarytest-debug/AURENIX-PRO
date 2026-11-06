@@ -21,8 +21,11 @@ if errorlevel 1 exit /b 16
 "%PYTHON%" -m pip check
 if errorlevel 1 exit /b 17
 "%PYTHON%" -m pip freeze > build-dependencies-lock.txt
-"%PYTHON%" -m py_compile aurenix_pro.py background_remover_pro.py windows_runtime_hook.py
+"%PYTHON%" -m py_compile aurenix_pro.py royal_gold_ui.py background_remover_pro.py windows_runtime_hook.py
 if errorlevel 1 exit /b 18
+echo [TEST] Royal Gold UI and PNG export smoke tests
+"%PYTHON%" "tests\smoke_royal_gold.py"
+if errorlevel 1 (echo [FAIL] UI or image-export smoke test failed & exit /b 19)
 set "QT_QPA_PLATFORM=offscreen"
 "%PYTHON%" -m unittest discover -s tests -p "test_aurenix_gui.py" -v
 if errorlevel 1 (echo [FAIL] GUI startup or image-library tests failed & exit /b 19)
