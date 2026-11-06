@@ -24,8 +24,14 @@ def test_gui():
     assert window.quality == "High"
     assert window.library.count() == 0
     assert window.start_btn.text().endswith("Process Images")
+    # Capture a CI-rendered UI reference, not a claim of clean-PC verification.
+    preview = Path("build-preview")
+    preview.mkdir(parents=True, exist_ok=True)
+    window.show()
+    app.processEvents()
+    assert window.grab().save(str(preview / "aurenix-royal-gold-ui.png"))
     window.close()
-    print("[PASS] Royal Gold Qt interface and core controls")
+    print("[PASS] Royal Gold Qt interface, controls and preview screenshot")
     return app
 
 
