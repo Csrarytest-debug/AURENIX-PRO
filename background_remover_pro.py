@@ -258,12 +258,15 @@ class BatchWorker(QThread):
                     if self.denoise:
                         rgb = rgb.filter(ImageFilter.MedianFilter(size=3))
                     if self.sharpness:
-                        rgb = ImageEnhance.Sharpness(rgb).enhance(
-                            1.25 if self.quality == "High" else 1.5
-                        )
+                        strength = {
+                            "Standard": 1.1, "High": 1.25, "Ultra": 1.5
+                        }.get(self.quality, 1.25)
+                        rgb = ImageEnhance.Sharpness(rgb).enhance(strength)
                     if self.detail:
                         rgb = rgb.filter(ImageFilter.UnsharpMask(
-                            radius=1.2, percent=115 if self.quality == "High" else 160,
+                            radius=1.2, percent={
+                                "Standard": 75, "High": 115, "Ultra": 160
+                            }.get(self.quality, 115),
                             threshold=3
                         ))
                     result = rgb.convert("RGBA")
@@ -1014,10 +1017,12 @@ class BackgroundRemoverPro(QMainWindow):
             self.height_input.value(),
             mode=mode,
             api_key=api_key,
-            color_boost=getattr(
-                getattr(self, "color_boost", None), "value",
-                lambda: 100
-            )(),
+            color_boost=(
+                self.color_boost.value()
+                if getattr(self, "color_check", None) is None
+                or self.color_check.isChecked()
+                else 100
+            ),
             transparent=(
                 getattr(self, "output_format", None) is not None
                 and self.output_format.currentIndex() == 0
