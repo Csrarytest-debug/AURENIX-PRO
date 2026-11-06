@@ -53,5 +53,6 @@ jobs:
           path: |
             Installer/AURENIX-PRO-Dark-Royal-Gold-Windows-Setup.exe
             build-dependencies-lock.txt
+            build-preview/aurenix-royal-gold-ui.png
           if-no-files-found: error
           retention-days: 14
