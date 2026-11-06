@@ -16,7 +16,7 @@ permissions:
 jobs:
   build-macos:
     name: macOS Apple Silicon standalone app and DMG
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 90
     steps:
       - name: Checkout AURENIX PRO source
