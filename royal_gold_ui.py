@@ -2,11 +2,12 @@
 Keeps the original processing, editing and image-library methods intact.
 """
 from pathlib import Path
+import time
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtWidgets import (
     QWidget, QFrame, QLabel, QPushButton, QHBoxLayout, QVBoxLayout,
     QListWidget, QComboBox, QSpinBox, QLineEdit, QCheckBox, QSlider,
-    QButtonGroup, QMessageBox
+    QButtonGroup, QMessageBox, QDialog, QDialogButtonBox
 )
 from background_remover_pro import WIDTH, HEIGHT, DPI
 
@@ -73,6 +74,7 @@ class RoyalGoldMixin:
         self.setMinimumSize(1160, 700)
         self.setStyleSheet(STYLE)
         self.quality = "High"
+        self.batch_started_at = None
         # Prefer the approved D: output path only when that drive exists.
         if Path("D:/").is_dir():
             self.output_dir = Path("D:/AURENIX PRO/Output")
@@ -118,7 +120,7 @@ class RoyalGoldMixin:
             ("▣ Batch Processing", lambda: self.library.setFocus()),
             ("✎ Editor", lambda: self.tool_select.setFocus()),
             ("⚒ Tools", lambda: self.sharpness_check.setFocus()),
-            ("▤ Export History", self.open_output),
+            ("▤ Export History", self.show_export_history),
         )):
             b = self.btn(text, callback)
             b.setProperty("tab", True)
@@ -376,9 +378,27 @@ class RoyalGoldMixin:
             "Use Editor controls to refine a processed image."
         )
 
+    def start_processing(self):
+        self.batch_started_at = time.monotonic()
+        self.processing_label.setText("Initializing AI processing…")
+        super().start_processing()
+
+    def retry_failed(self):
+        self.batch_started_at = time.monotonic()
+        super().retry_failed()
+
     def update_progress(self, done, total):
         super().update_progress(done, total)
-        self.processing_label.setText(f"Processing: {done} of {total} images attempted")
+        elapsed = max(0.001, time.monotonic() - self.batch_started_at) if self.batch_started_at else 0
+        rate = done / elapsed if elapsed and done else 0
+        remaining = (total - done) / rate if rate else 0
+        if rate:
+            self.processing_label.setText(
+                f"{done}/{total} images • {rate * 60:.1f} img/min • "
+                f"ETA {int(remaining // 60):02d}:{int(remaining % 60):02d}"
+            )
+        else:
+            self.processing_label.setText(f"Processing: {done}/{total} images")
 
     def image_completed(self, source, output):
         super().image_completed(source, output)
@@ -390,3 +410,42 @@ class RoyalGoldMixin:
             "Batch complete" if not self.errors else
             f"Batch complete — {len(self.errors)} failed"
         )
+        self.batch_started_at = None
+
+    def show_export_history(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("AURENIX PRO — Export History")
+        dialog.resize(600, 420)
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(self.label("Exported Images"))
+        history = QListWidget()
+        outputs = sorted(
+            (p for p in self.output_dir.glob("*.png") if p.is_file()),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True
+        ) if self.output_dir.is_dir() else []
+        for file in outputs:
+            history.addItem(file.name)
+        if not outputs:
+            history.addItem("No exported PNG files in the current output folder.")
+            history.setEnabled(False)
+        layout.addWidget(history)
+        def open_selected():
+            index = history.currentRow()
+            if 0 <= index < len(outputs):
+                from PySide6.QtCore import QUrl
+                from PySide6.QtGui import QDesktopServices
+                QDesktopServices.openUrl(QUrl.fromLocalFile(str(outputs[index])))
+        history.itemDoubleClicked.connect(lambda item: open_selected())
+        open_button = QPushButton("Open Selected Image")
+        open_button.setEnabled(bool(outputs))
+        open_button.clicked.connect(open_selected)
+        layout.addWidget(open_button)
+        folder_button = QPushButton("Open Output Folder")
+        folder_button.clicked.connect(self.open_output)
+        layout.addWidget(folder_button)
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.rejected.connect(dialog.reject)
+        layout.addWidget(close_buttons)
+        dialog.exec()
+
