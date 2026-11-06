@@ -695,16 +695,18 @@ class AurenixPro(BackgroundRemoverPro):
                 pass
 
 
+from PySide6.QtWidgets import QProgressBar
+from royal_gold_ui import RoyalGoldMixin
+
+
+class RoyalGoldApp(RoyalGoldMixin, AurenixPro):
+    FitPreviewClass = FitPreview
+    EditablePreviewClass = SafeFitEditablePreview
+    ScrollAreaClass = SafeFitScrollArea
+    ProgressBarClass = QProgressBar
+
+
 if __name__ == "__main__":
-    from PySide6.QtWidgets import QProgressBar
-    from royal_gold_ui import RoyalGoldMixin
-
-    class RoyalGoldApp(RoyalGoldMixin, AurenixPro):
-        FitPreviewClass = FitPreview
-        EditablePreviewClass = SafeFitEditablePreview
-        ScrollAreaClass = SafeFitScrollArea
-        ProgressBarClass = QProgressBar
-
     app = QApplication(sys.argv)
     window = RoyalGoldApp()
     window.show()
