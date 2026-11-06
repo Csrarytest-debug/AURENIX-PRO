@@ -4,7 +4,7 @@ import sys
 import threading
 from pathlib import Path
 
-from PIL import Image, ImageOps, ImageDraw
+from PIL import Image, ImageOps, ImageDraw, ImageEnhance
 from rembg import remove, new_session
 
 from PySide6.QtCore import Qt, QThread, Signal
@@ -118,7 +118,8 @@ class BatchWorker(QThread):
     status = Signal(str)
 
     def __init__(
-        self, images, output_dir, width, height
+        self, images, output_dir, width, height,
+        mode="offline", api_key="", color_boost=100
     ):
         super().__init__()
 
@@ -126,6 +127,9 @@ class BatchWorker(QThread):
         self.output_dir = Path(output_dir)
         self.width = width
         self.height = height
+        self.mode = mode
+        self.api_key = api_key
+        self.color_boost = color_boost
 
         self.resume_event = threading.Event()
         self.resume_event.set()
@@ -152,8 +156,14 @@ class BatchWorker(QThread):
                 exist_ok=True
             )
 
-            self.status.emit("Loading AI model...")
-            session = new_session("birefnet-general")
+            if self.mode == "offline":
+                self.status.emit("Loading local BiRefNet model...")
+                session = new_session("birefnet-general")
+            else:
+                # requests is only loaded when cloud mode is explicitly selected.
+                import requests
+                session = None
+                self.status.emit("Live AI: ready to upload selected images")
 
         except Exception as error:
             self.failed.emit(
@@ -188,10 +198,31 @@ class BatchWorker(QThread):
                     buffer = io.BytesIO()
                     img.save(buffer, format="PNG")
 
-                result_data = remove(
-                    buffer.getvalue(),
-                    session=session
-                )
+                if self.mode == "live":
+                    # Images leave this PC ONLY when the user selected Live AI.
+                    import requests
+                    with open(image_path, "rb") as image_file:
+                        response = requests.post(
+                            "https://api.remove.bg/v1.0/removebg",
+                            headers={"X-Api-Key": self.api_key},
+                            files={"image_file": (
+                                Path(image_path).name, image_file
+                            )},
+                            data={"size": "auto"},
+                            timeout=(15, 180),
+                        )
+                    if response.status_code != 200:
+                        raise RuntimeError(
+                            "Live AI service returned HTTP "
+                            + str(response.status_code)
+                            + ". Check API credits, key, connection, and image format."
+                        )
+                    result_data = response.content
+                else:
+                    result_data = remove(
+                        buffer.getvalue(),
+                        session=session
+                    )
 
                 with Image.open(
                     io.BytesIO(result_data)
@@ -203,6 +234,15 @@ class BatchWorker(QThread):
                     self.width,
                     self.height
                 )
+
+                # Color boost affects foreground before white compositing.
+                if self.color_boost != 100:
+                    alpha = result.getchannel("A")
+                    rgb = ImageEnhance.Color(
+                        result.convert("RGB")
+                    ).enhance(self.color_boost / 100.0)
+                    result = rgb.convert("RGBA")
+                    result.putalpha(alpha)
 
                 # Opaque white PNG output.
                 white = Image.new("RGBA", result.size, "#FFFFFF")
@@ -914,11 +954,44 @@ class BackgroundRemoverPro(QMainWindow):
 
         self.progress_bar.setValue(0)
 
+        mode = (
+            "live"
+            if getattr(self, "processing_mode", None) is not None
+            and self.processing_mode.currentIndex() == 1
+            else "offline"
+        )
+        api_key = ""
+        if mode == "live":
+            from PySide6.QtWidgets import QMessageBox
+            key_widget = getattr(self, "live_api_key", None)
+            api_key = key_widget.text().strip() if key_widget else ""
+            if not api_key:
+                QMessageBox.warning(
+                    self, "Live AI setup",
+                    "Enter your remove.bg API key before starting Live AI."
+                )
+                return
+            approval = QMessageBox.question(
+                self, "Send images to cloud AI?",
+                f"Live AI will upload {len(files)} image(s) to remove.bg. "
+                "This may use paid API credits. Continue?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if approval != QMessageBox.StandardButton.Yes:
+                return
+
         self.worker = BatchWorker(
             files,
             self.output_dir,
             self.width_input.value(),
-            self.height_input.value()
+            self.height_input.value(),
+            mode=mode,
+            api_key=api_key,
+            color_boost=getattr(
+                getattr(self, "color_boost", None), "value",
+                lambda: 100
+            )(),
         )
 
         self.worker.progress.connect(
@@ -1054,6 +1127,12 @@ class BackgroundRemoverPro(QMainWindow):
         self.stop_btn.setEnabled(
             running
         )
+        if hasattr(self, "processing_mode"):
+            self.processing_mode.setEnabled(not running)
+        if hasattr(self, "live_api_key"):
+            self.live_api_key.setEnabled(not running)
+        if hasattr(self, "color_boost"):
+            self.color_boost.setEnabled(not running)
 
         self.retry_btn.setEnabled(
             bool(self.errors) and not running
