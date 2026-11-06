@@ -81,11 +81,19 @@ class SafeFitEditablePreview(EditablePreview):
 
         image = self.processed.convert("RGBA")
 
-        display = Image.new(
-            "RGBA",
-            image.size,
-            (255, 255, 255, 255)
-        )
+        # Checkerboard is preview-only; never written into exported PNG.
+        from PIL import ImageDraw
+        display = Image.new("RGBA", image.size, "#F0F0F0")
+        draw = ImageDraw.Draw(display)
+        tile = 24
+        for y in range(0, image.height, tile):
+            for x in range(0, image.width, tile):
+                if (x // tile + y // tile) % 2:
+                    draw.rectangle(
+                        (x, y, min(x + tile - 1, image.width - 1),
+                         min(y + tile - 1, image.height - 1)),
+                        fill="#C9C9C9"
+                    )
         display.alpha_composite(image)
 
         fit = min(
@@ -688,7 +696,16 @@ class AurenixPro(BackgroundRemoverPro):
 
 
 if __name__ == "__main__":
+    from PySide6.QtWidgets import QProgressBar
+    from royal_gold_ui import RoyalGoldMixin
+
+    class RoyalGoldApp(RoyalGoldMixin, AurenixPro):
+        FitPreviewClass = FitPreview
+        EditablePreviewClass = SafeFitEditablePreview
+        ScrollAreaClass = SafeFitScrollArea
+        ProgressBarClass = QProgressBar
+
     app = QApplication(sys.argv)
-    window = AurenixPro()
+    window = RoyalGoldApp()
     window.show()
     sys.exit(app.exec())
