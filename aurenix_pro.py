@@ -601,6 +601,60 @@ class AurenixPro(BackgroundRemoverPro):
             "AURENIX PRO ready"
         )
 
+    def remove_selected_image(self):
+        """Remove one library entry without deleting any source or output file."""
+        if self.worker is not None:
+            self.statusBar().showMessage("Stop processing before changing the library.")
+            return
+
+        row = self.library.currentRow()
+        if not 0 <= row < len(self.images):
+            return
+
+        # Prevent selection callbacks from observing mismatched list indices.
+        self.library.blockSignals(True)
+        try:
+            path = self.images.pop(row)
+            self.library.takeItem(row)
+            self.outputs.pop(path, None)
+            self.errors.discard(path)
+            next_row = min(row, len(self.images) - 1)
+            self.library.setCurrentRow(next_row)
+        finally:
+            self.library.blockSignals(False)
+
+        self.count.setText(f"{len(self.images)} images loaded")
+        if next_row >= 0:
+            self.select_image()
+        else:
+            self.selected_path = None
+            self.original_preview.clear()
+            self.editor.set_images(None, None)
+        self.update_controls()
+
+    def clear_image_library(self):
+        """Clear only the in-memory library; preserve source and exported files."""
+        if self.worker is not None:
+            self.statusBar().showMessage("Stop processing before clearing the library.")
+            return
+
+        self.library.blockSignals(True)
+        try:
+            self.library.clear()
+            self.images.clear()
+            self.outputs.clear()
+            self.errors.clear()
+        finally:
+            self.library.blockSignals(False)
+
+        self.selected_path = None
+        self.original_preview.clear()
+        self.editor.set_images(None, None)
+        self.progress_bar.setValue(0)
+        self.count.setText("0 images loaded")
+        self.update_controls()
+        self.statusBar().showMessage("Image library cleared. Files on disk were not deleted.")
+
     def add_images(self, files):
         old_count = len(self.images)
         super().add_images(files)
