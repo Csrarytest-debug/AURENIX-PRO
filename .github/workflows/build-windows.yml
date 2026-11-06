@@ -5,6 +5,7 @@ on:
     branches: [windows-royal-gold-installer]
     paths:
       - 'aurenix_pro.py'
+      - 'royal_gold_ui.py'
       - 'background_remover_pro.py'
       - 'windows_runtime_hook.py'
       - 'BUILD_AURENIX_WINDOWS.bat'
