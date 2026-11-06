@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QColorDialog, QCheckBox
 )
 
-APP_NAME = "Background Remover Pro"
+APP_NAME = "AURENIX PRO"
 WIDTH = 1080
 HEIGHT = 810
 DPI = 400
@@ -41,12 +41,12 @@ def valid_image(path):
 
 def output_filename(folder, name):
     folder = Path(folder)
-    candidate = folder / (name + "_removed.png")
+    candidate = folder / (name + ".png")
     counter = 2
 
     while candidate.exists():
         candidate = folder / (
-            f"{name}_removed_{counter}.png"
+            f"{name}_{counter}.png"
         )
         counter += 1
 
@@ -153,7 +153,7 @@ class BatchWorker(QThread):
             )
 
             self.status.emit("Loading AI model...")
-            session = new_session("u2net")
+            session = new_session("birefnet-general")
 
         except Exception as error:
             self.failed.emit(
@@ -203,6 +203,11 @@ class BatchWorker(QThread):
                     self.width,
                     self.height
                 )
+
+                # Opaque white PNG output.
+                white = Image.new("RGBA", result.size, "#FFFFFF")
+                white.alpha_composite(result)
+                result = white.convert("RGB")
 
                 output = output_filename(
                     self.output_dir,
@@ -896,10 +901,9 @@ class BackgroundRemoverPro(QMainWindow):
             parents=True,
             exist_ok=True
         )
-        import os
-        os.startfile(
-            str(self.output_dir)
-        )
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(self.output_dir)))
 
     def start_worker(self, files):
         if not files or self.worker is not None:
