@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QApplication, QFrame, QGroupBox, QHBoxLayout,
     QLabel, QListWidget, QPushButton, QScrollArea,
     QSpinBox, QComboBox, QProgressBar, QSizePolicy,
+    QLineEdit,
     QVBoxLayout, QWidget
 )
 
@@ -330,6 +331,37 @@ class AurenixPro(BackgroundRemoverPro):
         )
         settings.addWidget(self.model_info)
 
+        # Optional cloud service: offline mode remains the default.
+        settings.addWidget(QLabel("AI PROCESSING MODE"))
+        self.processing_mode = QComboBox()
+        self.processing_mode.addItems([
+            "Offline AI — BiRefNet (Local)",
+            "Live AI — remove.bg (Internet)",
+        ])
+        settings.addWidget(self.processing_mode)
+
+        self.live_api_key = QLineEdit()
+        self.live_api_key.setPlaceholderText("remove.bg API Key")
+        self.live_api_key.setEchoMode(QLineEdit.EchoMode.Password)
+        self.live_api_key.setToolTip(
+            "Only used for the current session; never saved to disk."
+        )
+        self.live_api_key.setVisible(False)
+        settings.addWidget(self.live_api_key)
+
+        self.live_notice = QLabel(
+            "Live AI uploads selected images to remove.bg and "
+            "may consume paid API credits."
+        )
+        self.live_notice.setWordWrap(True)
+        self.live_notice.setVisible(False)
+        settings.addWidget(self.live_notice)
+
+        def set_cloud_visible(index):
+            self.live_api_key.setVisible(index == 1)
+            self.live_notice.setVisible(index == 1)
+        self.processing_mode.currentIndexChanged.connect(set_cloud_visible)
+
         quality_note = QLabel(
             "Preserves fine equipment details.\n"
             "Processing time depends on image size."
@@ -366,6 +398,16 @@ class AurenixPro(BackgroundRemoverPro):
             f"Resolution: {DPI} PPI"
         ))
         settings.addWidget(output_group)
+
+        settings.addWidget(QLabel("COLOR ENHANCEMENT"))
+        self.color_boost = QSpinBox()
+        self.color_boost.setRange(0, 200)
+        self.color_boost.setValue(100)
+        self.color_boost.setSuffix("%")
+        self.color_boost.setToolTip(
+            "100% is original color. Values above 100% boost saturation."
+        )
+        settings.addWidget(self.color_boost)
 
         edit_group = QGroupBox("EDITING TOOLS")
         edit_form = QVBoxLayout(edit_group)
