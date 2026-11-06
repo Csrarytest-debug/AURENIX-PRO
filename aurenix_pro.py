@@ -145,14 +145,14 @@ class AurenixPro(BackgroundRemoverPro):
 
         self.setStyleSheet("""
             QMainWindow, QWidget {
-                background:#101c2c;
-                color:#eaf2fc;
+                background:#0d111a;
+                color:#f3efe5;
                 font-family:"Segoe UI";
                 font-size:12px;
             }
             QFrame#panel, QGroupBox {
-                background:#14273b;
-                border:1px solid #31506d;
+                background:#171e2a;
+                border:1px solid #5e503b;
                 border-radius:8px;
             }
             QGroupBox {
@@ -166,35 +166,35 @@ class AurenixPro(BackgroundRemoverPro):
                 padding:0 5px;
             }
             QPushButton {
-                background:#243d56;
-                border:1px solid #42627c;
+                background:#292c34;
+                border:1px solid #82704f;
                 border-radius:5px;
                 min-height:26px;
                 padding:5px 9px;
             }
             QPushButton:hover {
-                background:#315474;
+                background:#403c3b;
             }
             QPushButton[accent="true"] {
-                background:#086ac3;
-                border:1px solid #2595fa;
+                background:#9b742e;
+                border:1px solid #dfb966;
                 color:white;
                 font-weight:600;
             }
             QPushButton:disabled {
-                background:#203045;
-                color:#71859a;
-                border-color:#32445a;
+                background:#242a33;
+                color:#92908d;
+                border-color:#48433d;
             }
             QListWidget {
-                background:#0c1929;
-                border:1px solid #31506d;
+                background:#111720;
+                border:1px solid #5e503b;
                 border-radius:5px;
                 padding:5px;
             }
             QListWidget::item:selected {
-                background:#1267ae;
-                border:1px solid #59b6ff;
+                background:#785c2b;
+                border:1px solid #e0bc73;
                 border-radius:5px;
             }
             QScrollArea {
@@ -202,20 +202,20 @@ class AurenixPro(BackgroundRemoverPro):
                 background:#0b1725;
             }
             QSpinBox, QComboBox {
-                background:#20394f;
-                border:1px solid #45617a;
+                background:#262d37;
+                border:1px solid #806b4c;
                 border-radius:4px;
                 padding:6px;
             }
             QProgressBar {
                 background:#0b1725;
-                border:1px solid #31506d;
+                border:1px solid #5e503b;
                 border-radius:4px;
                 text-align:center;
                 min-height:15px;
             }
             QProgressBar::chunk {
-                background:#0786e4;
+                background:#c89b49;
             }
         """)
 
@@ -232,7 +232,7 @@ class AurenixPro(BackgroundRemoverPro):
         mark = QLabel("A")
         mark.setFixedWidth(55)
         mark.setStyleSheet(
-            "font-size:43px;font-weight:900;color:#38baff;"
+            "font-size:43px;font-weight:900;color:#e3bd6d;"
             "border:0;background:transparent;"
         )
         top.addWidget(mark)
@@ -246,7 +246,7 @@ class AurenixPro(BackgroundRemoverPro):
         )
         brand_tag = QLabel("AI Precision Imaging")
         brand_tag.setStyleSheet(
-            "color:#79b9e9;font-size:11px;"
+            "color:#c6b38f;font-size:11px;"
             "border:0;background:transparent;"
         )
         brand.addWidget(brand_name)
@@ -325,8 +325,8 @@ class AurenixPro(BackgroundRemoverPro):
         )
         self.model_info.setWordWrap(True)
         self.model_info.setStyleSheet(
-            "color:#8fd0ff;font-weight:600;"
-            "padding:10px;background:#1b3851;"
+            "color:#e5c887;font-weight:600;"
+            "padding:10px;background:#2c2a29;"
             "border-radius:5px;"
         )
         settings.addWidget(self.model_info)
