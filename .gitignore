@@ -1,0 +1,11 @@
+# Keep local build outputs and secrets out of GitHub
+.venv_build/
+build/
+dist/
+Installer/
+models/
+build-dependencies-lock.txt
+__pycache__/
+*.pyc
+*.log
+.env
