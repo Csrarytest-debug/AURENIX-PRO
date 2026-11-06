@@ -1,5 +1,14 @@
 # AURENIX PRO — Dark Royal Gold Edition (Windows)
 
+## Screenshot-matched interface update (2026-11-07)
+
+The approved image is a **design reference**, not a screenshot from the installed application. The current branch now launches `RoyalGoldApp` from `royal_gold_ui.py`, with the dark royal gold header, navigation, workflow rail, dual previews, image queue, AI engine panel and live processing bar. Existing edit controls remain accessible beneath the result preview.
+
+The output selector offers **transparent PNG** (checkerboard preview) and **pure-white PNG**. Both use the configured dimensions (default 1080 × 810), 400 DPI and original source stems. Color, sharpness, median denoise and unsharp-mask detail controls are actual PIL post-processing; quality levels vary post-processing strength, not the BiRefNet segmentation model. The UI has no fabricated processing numbers.
+
+The build script now runs `tests/smoke_royal_gold.py` (headless Qt startup and mocked segmentation PNG export) before bundling. A passing CI build does not certify that the installed GUI is pixel-identical to the reference, that real segmentation preserves every fine detail, or that the app is portable on an unrelated clean Windows PC. Those remain manual release gates.
+
+
 This branch packages the existing AURENIX PRO image background-removal application as a **Windows x64 EXE and Inno Setup installer**. It does not contain a precompiled installer. It does not change the approved workspace layout. The theme changes are confined to the UI palette in `aurenix_pro.py`.
 
 ## Current app functions
