@@ -1,0 +1,56 @@
+name: AURENIX PRO Dark Royal Gold Windows Setup
+
+on:
+  push:
+    branches: [windows-royal-gold-installer]
+    paths:
+      - 'aurenix_pro.py'
+      - 'background_remover_pro.py'
+      - 'windows_runtime_hook.py'
+      - 'BUILD_AURENIX_WINDOWS.bat'
+      - 'AURENIX-PRO-Windows-Setup.iss'
+      - 'requirements-windows-build.txt'
+      - 'tests/**'
+      - '.github/workflows/build-windows.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-setup:
+    name: Build Windows EXE and Setup
+    runs-on: windows-2022
+    timeout-minutes: 120
+    steps:
+      - name: Checkout application and pipeline
+        uses: actions/checkout@v4
+
+      - name: Install Python 3.11 x64
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Ensure Inno Setup 6 is installed
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup --no-progress -y
+          }
+          if (-not (Test-Path $iscc)) { throw "Inno Setup compiler not found" }
+
+      - name: Build standalone Windows EXE and installer
+        shell: cmd
+        run: call BUILD_AURENIX_WINDOWS.bat
+
+      - name: Upload Windows installer and dependency lock
+        uses: actions/upload-artifact@v4
+        with:
+          name: AURENIX-PRO-Dark-Royal-Gold-Windows-Installer
+          path: |
+            Installer/AURENIX-PRO-Dark-Royal-Gold-Windows-Setup.exe
+            build-dependencies-lock.txt
+          if-no-files-found: error
+          retention-days: 14
