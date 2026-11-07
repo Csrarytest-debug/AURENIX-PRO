@@ -337,6 +337,16 @@ class RoyalGoldMixin:
         self.output_format.currentIndexChanged.connect(
             self.update_background_option
         )
+        right.addWidget(self.label("Image Resolution"))
+        self.resolution_preset = QComboBox()
+        self.resolution_preset.addItems([
+            "Current — 1080 × 810 (Default)",
+            "HD — 1280 × 720",
+            "Full HD — 1920 × 1080",
+            "4K UHD — 3840 × 2160",
+            "Custom — Custom Dimensions",
+        ])
+        right.addWidget(self.resolution_preset)
         dimensions = QHBoxLayout()
         self.width_input = QSpinBox()
         self.width_input.setRange(1, 16000)
@@ -349,6 +359,10 @@ class RoyalGoldMixin:
         dimensions.addWidget(self.width_input)
         dimensions.addWidget(self.height_input)
         right.addLayout(dimensions)
+        self.resolution_preset.currentIndexChanged.connect(
+            self.update_resolution_preset
+        )
+        self.update_resolution_preset(0)
         right.addWidget(self.label(f"PNG • {DPI} DPI • Original filenames", "muted"))
         right.addStretch()
         self.start_btn = self.btn("▶  Process Images", self.start_processing, True)
@@ -377,6 +391,18 @@ class RoyalGoldMixin:
         f.addWidget(self.stop_btn)
         root.addWidget(footer)
         self.statusBar().showMessage("AURENIX PRO ready")
+
+    def update_resolution_preset(self, index):
+        presets = (
+            (1080, 810), (1280, 720), (1920, 1080), (3840, 2160)
+        )
+        is_custom = index == 4
+        if not is_custom:
+            width, height = presets[index]
+            self.width_input.setValue(width)
+            self.height_input.setValue(height)
+        self.width_input.setEnabled(is_custom)
+        self.height_input.setEnabled(is_custom)
 
     def update_background_option(self, index):
         # Keep the approved right-panel layout; reveal picker only in custom mode.
