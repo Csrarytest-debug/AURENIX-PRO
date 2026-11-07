@@ -6,6 +6,7 @@ on:
     paths:
       - 'aurenix_pro.py'
       - 'royal_gold_ui.py'
+      - 'assets/**'
       - 'background_remover_pro.py'
       - 'windows_runtime_hook.py'
       - 'BUILD_AURENIX_WINDOWS.bat'
