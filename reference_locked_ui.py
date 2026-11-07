@@ -91,6 +91,12 @@ class ReferenceLockedMixin(RoyalGoldMixin):
         layout.addWidget(self.live_api_key)
         self.live_notice.setParent(dialog)
         layout.addWidget(self.live_notice)
+        layout.addWidget(self._text("Processing Quality", "section"))
+        quality = QComboBox(dialog)
+        quality.addItems(["Standard", "High", "Ultra"])
+        quality.setCurrentText(self.quality)
+        quality.currentTextChanged.connect(self.set_quality)
+        layout.addWidget(quality)
         layout.addWidget(self._text("Image Enhancement", "section"))
         for widget in (self.color_check, self.color_boost, self.sharpness_check,
                        self.denoise_check, self.detail_check):
