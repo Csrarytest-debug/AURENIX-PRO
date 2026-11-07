@@ -8,7 +8,12 @@
 AppId={{0F1DCA17-1E0C-49B6-98F2-27DDB4E774A2}
 AppName={#AppName}
 AppVersion={#AppVersion}
-AppVerName=AURENIX PRO - Dark Royal Gold Edition
+AppVerName=AURENIX PRO {#AppVersion}
+VersionInfoVersion=1.1.0.0
+VersionInfoProductVersion=1.1.0.0
+VersionInfoDescription=AURENIX PRO Windows Installer
+VersionInfoProductName=AURENIX PRO
+VersionInfoCompany=BS Broadcast
 DefaultDirName={localappdata}\Programs\AURENIX PRO
 DefaultGroupName={#AppName}
 PrivilegesRequired=lowest
