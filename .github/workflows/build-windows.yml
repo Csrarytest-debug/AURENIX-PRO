@@ -47,12 +47,29 @@ jobs:
         shell: cmd
         run: call BUILD_AURENIX_WINDOWS.bat
 
+      - name: Record installer checksum and signature status
+        shell: pwsh
+        run: |
+          $installer = "Installer/AURENIX-PRO-Dark-Royal-Gold-Windows-Setup.exe"
+          if (-not (Test-Path $installer)) { throw "Installer missing" }
+          $hash = (Get-FileHash $installer -Algorithm SHA256).Hash
+          "$hash  AURENIX-PRO-Dark-Royal-Gold-Windows-Setup.exe" | Set-Content -Path Installer/SHA256SUMS.txt -Encoding ascii
+          $signature = Get-AuthenticodeSignature $installer
+          "Authenticode status: $($signature.Status)" | Set-Content -Path Installer/signature-report.txt
+          "Signer: $($signature.SignerCertificate.Subject)" | Add-Content -Path Installer/signature-report.txt
+          "SHA-256: $hash" | Add-Content -Path Installer/signature-report.txt
+          if ($signature.Status -ne "Valid") {
+            Write-Warning "Unsigned or untrusted installer: NOT a signed final release."
+          }
+
       - name: Upload Windows installer and dependency lock
         uses: actions/upload-artifact@v4
         with:
           name: AURENIX-PRO-Dark-Royal-Gold-Windows-Installer
           path: |
             Installer/AURENIX-PRO-Dark-Royal-Gold-Windows-Setup.exe
+            Installer/SHA256SUMS.txt
+            Installer/signature-report.txt
             build-dependencies-lock.txt
             build-preview/aurenix-royal-gold-ui.png
           if-no-files-found: error
