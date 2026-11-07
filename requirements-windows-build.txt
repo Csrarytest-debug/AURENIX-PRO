@@ -4,3 +4,4 @@ Pillow>=11,<13
 rembg[cpu]>=2.0.65,<3
 requests>=2.31,<3
 pyinstaller>=6.10,<7
+psutil>=6,<8
