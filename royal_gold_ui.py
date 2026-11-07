@@ -4,10 +4,11 @@ Keeps the original processing, editing and image-library methods intact.
 from pathlib import Path
 import time
 from PySide6.QtCore import Qt, QSize
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QWidget, QFrame, QLabel, QPushButton, QHBoxLayout, QVBoxLayout,
     QListWidget, QComboBox, QSpinBox, QLineEdit, QCheckBox, QSlider,
-    QButtonGroup, QMessageBox, QDialog, QDialogButtonBox
+    QButtonGroup, QMessageBox, QDialog, QDialogButtonBox, QColorDialog
 )
 from background_remover_pro import WIDTH, HEIGHT, DPI
 
@@ -318,9 +319,24 @@ class RoyalGoldMixin:
         right.addWidget(self.label("Output Format"))
         self.output_format = QComboBox()
         self.output_format.addItems([
-            "PNG (Transparent)", "PNG (Pure White #FFFFFF)"
+            "PNG (Pure White #FFFFFF) — Default",
+            "PNG (Custom Background Color)",
+            "PNG (Transparent)",
         ])
+        self.output_format.setCurrentIndex(0)
         right.addWidget(self.output_format)
+        self.background_color_hex = "#FFFFFF"
+        self.custom_color_button = self.btn(
+            "Choose Color • #FFFFFF", self.select_custom_background_color
+        )
+        self.custom_color_button.setToolTip(
+            "Choose the color used behind the foreground subject."
+        )
+        self.custom_color_button.setVisible(False)
+        right.addWidget(self.custom_color_button)
+        self.output_format.currentIndexChanged.connect(
+            self.update_background_option
+        )
         dimensions = QHBoxLayout()
         self.width_input = QSpinBox()
         self.width_input.setRange(1, 16000)
@@ -362,6 +378,24 @@ class RoyalGoldMixin:
         root.addWidget(footer)
         self.statusBar().showMessage("AURENIX PRO ready")
 
+    def update_background_option(self, index):
+        # Keep the approved right-panel layout; reveal picker only in custom mode.
+        self.custom_color_button.setVisible(index == 1)
+
+    def select_custom_background_color(self):
+        selected = QColorDialog.getColor(
+            QColor(self.background_color_hex), self,
+            "Choose Output Background Color"
+        )
+        if selected.isValid():
+            self.background_color_hex = selected.name().upper()
+            self.custom_color_button.setText(
+                f"Choose Color • {self.background_color_hex}"
+            )
+            self.statusBar().showMessage(
+                f"Custom output background: {self.background_color_hex}"
+            )
+
     def set_quality(self, quality):
         self.quality = quality
         self.statusBar().showMessage(f"Quality: {quality} (post-processing strength)")
@@ -374,7 +408,7 @@ class RoyalGoldMixin:
         QMessageBox.information(
             self, "AURENIX PRO Help",
             "Add images or a folder, select Offline AI or Live AI, "
-            "choose transparent or white PNG, and click Process Images. "
+            "choose white, custom-color or transparent PNG, and click Process Images. "
             "Use Editor controls to refine a processed image."
         )
 
