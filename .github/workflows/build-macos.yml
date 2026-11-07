@@ -7,6 +7,8 @@ on:
     paths:
       - 'aurenix_pro.py'
       - 'royal_gold_ui.py'
+      - 'assets/**'
+      - 'requirements-windows-build.txt'
       - 'tests/**'
       - 'background_remover_pro.py'
       - 'macos_runtime_hook.py'
@@ -63,6 +65,7 @@ jobs:
             --target-arch arm64 \
             --runtime-hook macos_runtime_hook.py \
             --add-data "models:models" \
+            --add-data "assets:assets" \
             --collect-all rembg \
             --collect-all onnxruntime \
             --collect-all pymatting \
