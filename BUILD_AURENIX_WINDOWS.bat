@@ -37,7 +37,7 @@ echo [MODEL] Download/validate BiRefNet General offline model
 "%PYTHON%" -c "from rembg import new_session; new_session('birefnet-general'); print('BiRefNet model ready')"
 if errorlevel 1 (echo [FAIL] Model download or initialization failed & exit /b 20)
 
-"%PYTHON%" -m PyInstaller --noconfirm --clean --windowed --onedir --name "AURENIX PRO" --runtime-hook windows_runtime_hook.py --add-data "models;models" --collect-all rembg --collect-all onnxruntime --collect-all pymatting aurenix_pro.py
+"%PYTHON%" -m PyInstaller --noconfirm --clean --windowed --onedir --name "AURENIX PRO" --runtime-hook windows_runtime_hook.py --add-data "models;models" --add-data "assets;assets" --collect-all rembg --collect-all onnxruntime --collect-all pymatting aurenix_pro.py
 if errorlevel 1 (echo [FAIL] PyInstaller build failed & exit /b 30)
 
 "%PYTHON%" "tests\verify_windows_package.py"
