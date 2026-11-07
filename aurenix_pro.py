@@ -707,7 +707,28 @@ class RoyalGoldApp(ReferenceLockedMixin, AurenixPro):
 
 
 if __name__ == "__main__":
+    # BS Broadcast splash is displayed while the actual Qt workspace is created.
+    # No invented model-loading progress or fabricated percentage is displayed.
+    from PySide6.QtWidgets import QSplashScreen
+    from PySide6.QtGui import QPainter, QColor, QFont
     app = QApplication(sys.argv)
+    splash_image = QPixmap(720, 280)
+    splash_image.fill(QColor("#031321"))
+    painter = QPainter(splash_image)
+    painter.setPen(QColor("#46bfff"))
+    painter.setFont(QFont("Segoe UI", 27, QFont.Weight.Bold))
+    painter.drawText(38, 91, "BS BROADCAST")
+    painter.setPen(QColor("#ffd04d"))
+    painter.setFont(QFont("Segoe UI", 37, QFont.Weight.Bold))
+    painter.drawText(38, 174, "AURENIX PRO")
+    painter.setPen(QColor("#c9d5e3"))
+    painter.setFont(QFont("Segoe UI", 13))
+    painter.drawText(40, 228, "Initializing application workspace…")
+    painter.end()
+    splash = QSplashScreen(splash_image)
+    splash.show()
+    app.processEvents()
     window = RoyalGoldApp()
     window.show()
+    splash.finish(window)
     sys.exit(app.exec())
