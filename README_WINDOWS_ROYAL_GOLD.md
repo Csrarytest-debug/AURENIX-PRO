@@ -49,3 +49,12 @@ The manual Windows workflow is at `.github/workflows/build-windows.yml`. Select 
 - Color enhancement currently adjusts saturation, not exposure/contrast.
 - This pipeline is source and build automation. Neither the EXE nor the installer has been compiled or tested in this chat.
 - No application credentials or API keys are included in the package.
+
+
+## Approved release refinements (November 2026)
+
+- Window title and visible header now read **AURENIX PRO — AI Background Remover**, without the words “Dark Royal Gold Edition” in the top text. The approved dark-and-gold visual theme is retained.
+- Upper-right resource readout shows live CPU/RAM, and NVIDIA GPU utilization/VRAM when `nvidia-smi` is available. Apple Silicon GPU load is shown as unavailable rather than a fabricated value.
+- Default export removes the source background and composites onto **pure white (#FFFFFF)**. Users may alternatively select a custom HEX background or transparent PNG.
+- Original BS Broadcast artwork is exclusive to AURENIX PRO. It must be provided at `assets/bs_broadcast_logo.png`. **The original PNG is not yet checked into the repository**; an installer without it is not the final branded release. See `assets/README.md`.
+- CI smoke tests do not replace installation, offline AI inference, and visual inspection on clean Windows and macOS machines.
