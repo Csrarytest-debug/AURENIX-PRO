@@ -2,9 +2,12 @@
 Keeps the original processing, editing and image-library methods intact.
 """
 from pathlib import Path
+import platform
+import shutil
 import time
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QColor
+import psutil
+from PySide6.QtCore import Qt, QSize, QTimer, QProcess
+from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtWidgets import (
     QWidget, QFrame, QLabel, QPushButton, QHBoxLayout, QVBoxLayout,
     QListWidget, QComboBox, QSpinBox, QLineEdit, QCheckBox, QSlider,
@@ -70,7 +73,7 @@ class RoyalGoldMixin:
         return result
 
     def build_interface(self):
-        self.setWindowTitle("AURENIX PRO — Dark Royal Gold Edition")
+        self.setWindowTitle("AURENIX PRO — AI Background Remover")
         self.resize(1530, 870)
         self.setMinimumSize(1160, 700)
         self.setStyleSheet(STYLE)
@@ -90,21 +93,48 @@ class RoyalGoldMixin:
         top.setObjectName("top")
         h = QHBoxLayout(top)
         h.setContentsMargins(20, 6, 18, 6)
-        mark = QLabel("A")
-        mark.setStyleSheet("color:#f2c353;font-size:42px;font-weight:900;")
+        # The BS Broadcast image is used only by AURENIX PRO. Preserve
+        # the original artwork; do not redraw or substitute a new logo.
+        mark = QLabel()
+        mark.setObjectName("bs_broadcast_logo")
+        mark.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        mark.setFixedSize(176, 82)
+        logo_file = Path(__file__).resolve().parent / "assets" / "bs_broadcast_logo.png"
+        if logo_file.is_file():
+            logo = QPixmap(str(logo_file))
+            if not logo.isNull():
+                mark.setPixmap(logo.scaled(
+                    172, 78, Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation
+                ))
+        else:
+            mark.setText("BS BROADCAST")
+            mark.setStyleSheet("color:#d9e7ff;font-size:16px;font-weight:800;")
+            mark.setToolTip("BS Broadcast logo asset missing from this build")
         h.addWidget(mark)
         brand = QVBoxLayout()
         brand.setSpacing(0)
         name = QLabel("AURENIX PRO")
         name.setStyleSheet("font-size:23px;font-weight:800;color:white;")
         brand.addWidget(name)
-        edition = QLabel("Dark Royal Gold Edition")
-        edition.setStyleSheet("color:#efbd52;font-size:11px;")
-        brand.addWidget(edition)
+        tagline = QLabel("AI Background Remover")
+        tagline.setStyleSheet("color:#efbd52;font-size:11px;")
+        brand.addWidget(tagline)
         h.addLayout(brand)
         h.addSpacing(24)
         h.addWidget(self.label("AI Background Remover & Photo Enhancer"))
         h.addStretch()
+        # Resource readout stays in the upper-right without moving the
+        # approved workspace panels. GPU usage is never fabricated.
+        self.resource_label = self.label("GPU: Checking… | CPU: — | RAM: —", "muted")
+        self.resource_label.setToolTip(
+            "Live GPU utilization and VRAM when available; CPU and system RAM."
+        )
+        self.resource_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
+        h.addWidget(self.resource_label)
+        h.addSpacing(12)
         h.addWidget(self.btn("ⓘ Help", self.show_help))
         h.addWidget(self.btn("⚙ Settings", self.show_settings))
         root.addWidget(top)
@@ -391,6 +421,65 @@ class RoyalGoldMixin:
         f.addWidget(self.stop_btn)
         root.addWidget(footer)
         self.statusBar().showMessage("AURENIX PRO ready")
+        self._gpu_text = (
+            "Apple GPU: usage N/A" if platform.system() == "Darwin"
+            else "GPU: unavailable"
+        )
+        self._gpu_process = QProcess(self)
+        self._gpu_process.finished.connect(self._gpu_query_finished)
+        self._gpu_executable = shutil.which("nvidia-smi")
+        if not self._gpu_executable and platform.system() == "Windows":
+            candidate = Path("C:/Program Files/NVIDIA Corporation/NVSMI/nvidia-smi.exe")
+            if candidate.is_file():
+                self._gpu_executable = str(candidate)
+        self._resource_timer = QTimer(self)
+        self._resource_timer.setInterval(3000)
+        self._resource_timer.timeout.connect(self.refresh_resources)
+        self._resource_timer.start()
+        self.refresh_resources()
+
+    def refresh_resources(self):
+        # Lightweight, nonblocking polling. Never run nvidia-smi on the UI
+        # thread; QProcess collects GPU data asynchronously.
+        try:
+            cpu = psutil.cpu_percent(interval=None)
+            memory = psutil.virtual_memory().percent
+            self.resource_label.setText(
+                f"{self._gpu_text}  |  CPU {cpu:.0f}%  |  RAM {memory:.0f}%"
+            )
+        except Exception:
+            self.resource_label.setText(f"{self._gpu_text}  |  CPU/RAM N/A")
+        if self._gpu_executable and self._gpu_process.state() == QProcess.ProcessState.NotRunning:
+            self._gpu_process.start(
+                self._gpu_executable,
+                ["--query-gpu=utilization.gpu,memory.used,memory.total",
+                 "--format=csv,noheader,nounits"]
+            )
+
+    def _gpu_query_finished(self, exit_code, exit_status):
+        if exit_code == 0 and exit_status == QProcess.ExitStatus.NormalExit:
+            raw = bytes(self._gpu_process.readAllStandardOutput()).decode(
+                "utf-8", errors="replace"
+            ).strip().splitlines()
+            try:
+                usage, used, total = (
+                    float(value.strip()) for value in raw[0].split(",")[:3]
+                )
+                self._gpu_text = (
+                    f"GPU {usage:.0f}% • VRAM {used / 1024:.1f}/{total / 1024:.1f} GB"
+                )
+            except (ValueError, IndexError, ZeroDivisionError):
+                self._gpu_text = "GPU: metrics unavailable"
+        else:
+            self._gpu_text = "GPU: metrics unavailable"
+        try:
+            cpu = psutil.cpu_percent(interval=None)
+            memory = psutil.virtual_memory().percent
+            self.resource_label.setText(
+                f"{self._gpu_text}  |  CPU {cpu:.0f}%  |  RAM {memory:.0f}%"
+            )
+        except Exception:
+            self.resource_label.setText(self._gpu_text)
 
     def update_resolution_preset(self, index):
         presets = (
