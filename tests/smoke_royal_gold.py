@@ -17,7 +17,10 @@ from aurenix_pro import RoyalGoldApp
 def test_gui():
     app = QApplication.instance() or QApplication([])
     window = RoyalGoldApp()
-    assert "Dark Royal Gold" in window.windowTitle()
+    assert window.windowTitle() == "AURENIX PRO — AI Background Remover"
+    assert window.resource_label is not None
+    assert "Dark Royal Gold Edition" not in window.windowTitle()
+    assert window.output_format.currentIndex() == 0
     assert window.processing_mode.count() == 2
     assert window.output_format.count() == 3
     assert window.output_format.currentIndex() == 0  # White is default.
