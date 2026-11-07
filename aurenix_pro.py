@@ -23,6 +23,7 @@ class FitPreview(QLabel):
     def __init__(self):
         super().__init__()
         self.source_pixmap = None
+        self.zoom_factor = 1.0
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setMinimumSize(280, 250)
         self.setSizePolicy(
@@ -38,8 +39,10 @@ class FitPreview(QLabel):
     def fit_image(self):
         if self.source_pixmap is None:
             return
+        target = QSize(max(1, round(self.width() * self.zoom_factor)),
+                       max(1, round(self.height() * self.zoom_factor)))
         scaled = self.source_pixmap.scaled(
-            self.size(),
+            target,
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation
         )
