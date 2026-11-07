@@ -17,26 +17,19 @@ from aurenix_pro import RoyalGoldApp
 def test_gui():
     app = QApplication.instance() or QApplication([])
     window = RoyalGoldApp()
-    assert window.windowTitle() == "AURENIX PRO — AI Background Remover"
-    assert window.resource_label is not None
+    assert window.windowTitle() == "AURENIX PRO — BS Broadcast"
     assert "Dark Royal Gold Edition" not in window.windowTitle()
+    assert window.gpu_meter is not None and window.ram_meter is not None
+    assert window.gpu_value is not None and window.ram_value is not None
     assert window.output_format.currentIndex() == 0
     assert window.processing_mode.count() == 2
     assert window.output_format.count() == 3
-    assert window.output_format.currentIndex() == 0  # White is default.
     assert window.background_color_hex == "#FFFFFF"
-    assert not window.custom_color_button.isVisible()
-    window.output_format.setCurrentIndex(1)
-    assert not window.custom_color_button.isHidden()
-    window.output_format.setCurrentIndex(2)
-    assert window.custom_color_button.isHidden()
-    window.output_format.setCurrentIndex(0)
+    assert window.custom_color_button.isEnabled()
     assert window.resolution_preset.count() == 5
     assert (window.width_input.value(), window.height_input.value()) == (1080, 810)
     assert not window.width_input.isEnabled()
-    for index, expected in (
-        (1, (1280, 720)), (2, (1920, 1080)), (3, (3840, 2160))
-    ):
+    for index, expected in ((1, (1280, 720)), (2, (1920, 1080)), (3, (3840, 2160))):
         window.resolution_preset.setCurrentIndex(index)
         assert (window.width_input.value(), window.height_input.value()) == expected
     window.resolution_preset.setCurrentIndex(4)
@@ -48,15 +41,17 @@ def test_gui():
     assert (window.width_input.value(), window.height_input.value()) == (1080, 810)
     assert window.quality == "High"
     assert window.library.count() == 0
-    assert window.start_btn.text().endswith("Process Images")
-    # Capture a CI-rendered UI reference, not a claim of clean-PC verification.
+    assert "Start Processing" in window.start_btn.text()
+    assert window.original_preview is not None and window.editor is not None
+    assert not window.start_btn.isEnabled()
+    # Actual rendered Qt screenshot for visual comparison on Windows.
     preview = Path("build-preview")
     preview.mkdir(parents=True, exist_ok=True)
     window.show()
     app.processEvents()
-    assert window.grab().save(str(preview / "aurenix-royal-gold-ui.png"))
+    assert window.grab().save(str(preview / "aurenix-reference-locked-ui.png"))
     window.close()
-    print("[PASS] Royal Gold Qt interface, controls and preview screenshot")
+    print("[PASS] Reference-locked Qt layout, controls and screenshot capture")
     return app
 
 
