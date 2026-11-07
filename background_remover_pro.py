@@ -121,7 +121,7 @@ class BatchWorker(QThread):
         self, images, output_dir, width, height,
         mode="offline", api_key="", color_boost=100,
         transparent=False, sharpness=False, denoise=False,
-        detail=False, quality="High"
+        detail=False, quality="High", background_color="#FFFFFF"
     ):
         super().__init__()
 
@@ -133,6 +133,8 @@ class BatchWorker(QThread):
         self.api_key = api_key
         self.color_boost = color_boost
         self.transparent = transparent
+        # Validated by Pillow before export; defaults to pure white.
+        self.background_color = background_color
         self.sharpness = sharpness
         self.denoise = denoise
         self.detail = detail
@@ -272,11 +274,14 @@ class BatchWorker(QThread):
                     result = rgb.convert("RGBA")
                     result.putalpha(alpha)
 
-                # User-selectable PNG alpha or pure-white background.
+                # Apply chosen background only where the segmentation mask
+                # is transparent; foreground colors are not recolored.
                 if not self.transparent:
-                    white = Image.new("RGBA", result.size, "#FFFFFF")
-                    white.alpha_composite(result)
-                    result = white.convert("RGB")
+                    background = Image.new(
+                        "RGBA", result.size, self.background_color
+                    )
+                    background.alpha_composite(result)
+                    result = background.convert("RGB")
 
                 output = output_filename(
                     self.output_dir,
@@ -1025,8 +1030,14 @@ class BackgroundRemoverPro(QMainWindow):
             ),
             transparent=(
                 getattr(self, "output_format", None) is not None
-                and self.output_format.currentIndex() == 0
+                and self.output_format.currentIndex() == 2
             ),
+            background_color=getattr(
+                self, "background_color_hex", "#FFFFFF"
+            ) if (
+                getattr(self, "output_format", None) is not None
+                and self.output_format.currentIndex() == 1
+            ) else "#FFFFFF",
             sharpness=(
                 getattr(self, "sharpness_check", None) is not None
                 and self.sharpness_check.isChecked()
