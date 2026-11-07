@@ -435,13 +435,23 @@ class ReferenceLockedMixin(RoyalGoldMixin):
 
     def _change_zoom(self, step):
         self.zoom_input.setValue(max(10, min(400, self.zoom_input.value() + step)))
+        self.original_preview.zoom_factor = self.zoom_input.value() / 100.0
+        self.original_preview.fit_image()
         self.original_zoom_label.setText(str(self.zoom_input.value()) + "%")
         self.output_zoom_label.setText(str(self.zoom_input.value()) + "%")
 
     def _fit_zoom(self):
         self.zoom_input.setValue(100)
+        self.original_preview.zoom_factor = 1.0
+        self.original_preview.fit_image()
         self.original_zoom_label.setText("100%")
         self.output_zoom_label.setText("100%")
+
+    def select_custom_background_color(self):
+        old = self.background_color_hex
+        super().select_custom_background_color()
+        if self.background_color_hex != old:
+            self.background_group.button(1).setChecked(True)
 
     def update_background_option(self, index):
         self.footer_text.setText(
