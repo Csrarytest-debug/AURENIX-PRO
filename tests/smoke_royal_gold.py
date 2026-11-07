@@ -28,6 +28,21 @@ def test_gui():
     window.output_format.setCurrentIndex(2)
     assert window.custom_color_button.isHidden()
     window.output_format.setCurrentIndex(0)
+    assert window.resolution_preset.count() == 5
+    assert (window.width_input.value(), window.height_input.value()) == (1080, 810)
+    assert not window.width_input.isEnabled()
+    for index, expected in (
+        (1, (1280, 720)), (2, (1920, 1080)), (3, (3840, 2160))
+    ):
+        window.resolution_preset.setCurrentIndex(index)
+        assert (window.width_input.value(), window.height_input.value()) == expected
+    window.resolution_preset.setCurrentIndex(4)
+    assert window.width_input.isEnabled() and window.height_input.isEnabled()
+    window.width_input.setValue(1234)
+    window.height_input.setValue(987)
+    assert (window.width_input.value(), window.height_input.value()) == (1234, 987)
+    window.resolution_preset.setCurrentIndex(0)
+    assert (window.width_input.value(), window.height_input.value()) == (1080, 810)
     assert window.quality == "High"
     assert window.library.count() == 0
     assert window.start_btn.text().endswith("Process Images")
