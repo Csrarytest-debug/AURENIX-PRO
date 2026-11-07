@@ -19,8 +19,15 @@ def test_gui():
     window = RoyalGoldApp()
     assert "Dark Royal Gold" in window.windowTitle()
     assert window.processing_mode.count() == 2
-    assert window.output_format.count() == 2
-    assert window.output_format.currentText() == "PNG (Transparent)"
+    assert window.output_format.count() == 3
+    assert window.output_format.currentIndex() == 0  # White is default.
+    assert window.background_color_hex == "#FFFFFF"
+    assert not window.custom_color_button.isVisible()
+    window.output_format.setCurrentIndex(1)
+    assert not window.custom_color_button.isHidden()
+    window.output_format.setCurrentIndex(2)
+    assert window.custom_color_button.isHidden()
+    window.output_format.setCurrentIndex(0)
     assert window.quality == "High"
     assert window.library.count() == 0
     assert window.start_btn.text().endswith("Process Images")
@@ -37,7 +44,8 @@ def test_gui():
 
 def test_export():
     # No internet or model needed: mock only segmentation to test
-    # transparent/white PNG export and post-processing behavior.
+    # Test transparent, default white, and custom-color PNG exports.
+    # Segmentation is mocked; this does not test model quality.
     orig_session, orig_remove = backend.new_session, backend.remove
     backend.new_session = lambda name: object()
     def fake_remove(image_bytes, session=None):
@@ -54,12 +62,16 @@ def test_export():
             base = Path(folder)
             source = base / "sample.jpg"
             Image.new("RGB", (32, 32), "red").save(source)
-            for transparent in (True, False):
-                target = base / ("alpha" if transparent else "white")
+            for label, transparent, background_color in (
+                ("white", False, "#FFFFFF"),
+                ("custom", False, "#2277CC"),
+                ("alpha", True, "#FFFFFF"),
+            ):
+                target = base / label
                 worker = backend.BatchWorker(
                     [str(source)], target, 1080, 810,
-                    transparent=transparent, sharpness=True,
-                    denoise=True, detail=True, quality="High"
+                    transparent=transparent, background_color=background_color,
+                    sharpness=True, denoise=True, detail=True, quality="High"
                 )
                 worker.run()
                 output = target / "sample.png"
@@ -71,8 +83,10 @@ def test_export():
                         assert image.mode == "RGBA"
                         assert image.getchannel("A").getextrema()[0] == 0
                     else:
-                        assert image.convert("RGB").getpixel((0, 0)) == (255, 255, 255)
-            print("[PASS] PNG alpha/white exports, dimensions and DPI")
+                        from PIL import ImageColor
+                        assert image.mode == "RGB"
+                        assert image.getpixel((0, 0)) == ImageColor.getrgb(background_color)
+            print("[PASS] PNG white/custom/alpha exports, dimensions and DPI")
     finally:
         backend.new_session, backend.remove = orig_session, orig_remove
 
