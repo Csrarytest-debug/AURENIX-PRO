@@ -1,9 +1,10 @@
 @echo off
 setlocal EnableExtensions
 cd /d "%~dp0"
-echo [AURENIX PRO] Windows Dark Royal Gold build
+echo [AURENIX PRO] Windows approved reference-locked build
 
 if not exist "aurenix_pro.py" (echo [FAIL] Missing aurenix_pro.py & exit /b 10)
+if not exist "reference_locked_ui.py" (echo [FAIL] Missing screenshot-locked interface & exit /b 10)
 if not exist "background_remover_pro.py" (echo [FAIL] Missing background_remover_pro.py & exit /b 11)
 if not exist "windows_runtime_hook.py" (echo [FAIL] Missing Windows runtime hook & exit /b 12)
 
@@ -21,7 +22,7 @@ if errorlevel 1 exit /b 16
 "%PYTHON%" -m pip check
 if errorlevel 1 exit /b 17
 "%PYTHON%" -m pip freeze > build-dependencies-lock.txt
-"%PYTHON%" -m py_compile aurenix_pro.py royal_gold_ui.py background_remover_pro.py windows_runtime_hook.py
+"%PYTHON%" -m py_compile aurenix_pro.py royal_gold_ui.py reference_locked_ui.py background_remover_pro.py windows_runtime_hook.py
 if errorlevel 1 exit /b 18
 echo [TEST] Royal Gold UI and PNG export smoke tests
 "%PYTHON%" "tests\smoke_royal_gold.py"
