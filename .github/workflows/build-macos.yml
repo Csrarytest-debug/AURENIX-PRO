@@ -3,9 +3,11 @@ name: Build AURENIX PRO macOS DMG
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, windows-royal-gold-installer]
     paths:
       - 'aurenix_pro.py'
+      - 'royal_gold_ui.py'
+      - 'tests/**'
       - 'background_remover_pro.py'
       - 'macos_runtime_hook.py'
       - '.github/workflows/build-macos.yml'
@@ -16,7 +18,7 @@ permissions:
 jobs:
   build-macos:
     name: macOS Apple Silicon standalone app and DMG
-    runs-on: macos-26
+    runs-on: macos-15
     timeout-minutes: 90
     steps:
       - name: Checkout AURENIX PRO source
@@ -31,13 +33,15 @@ jobs:
       - name: Install build and AI dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install "PySide6" "Pillow" "rembg[cpu]" "pyinstaller"
+          python -m pip install -r requirements-windows-build.txt
           python -m pip check
 
       - name: Verify Python source
         run: |
-          python -m py_compile aurenix_pro.py background_remover_pro.py macos_runtime_hook.py
-          python -c "import platform; print('Platform:', platform.platform(), 'Architecture:', platform.machine())"
+          python -m py_compile aurenix_pro.py royal_gold_ui.py background_remover_pro.py macos_runtime_hook.py
+          python -c "import platform; print('Platform:', platform.platform(), 'Architecture:', platform.machine()); assert platform.machine() == 'arm64', 'ARM64 runner required'"
+          QT_QPA_PLATFORM=offscreen python tests/smoke_royal_gold.py
+          QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -p 'test_aurenix_gui.py' -v
 
       - name: Download BiRefNet General model once for bundling
         env:
@@ -61,10 +65,16 @@ jobs:
             --add-data "models:models" \
             --collect-all rembg \
             --collect-all onnxruntime \
+            --collect-all pymatting \
             aurenix_pro.py
           test -d "dist/AURENIX PRO.app"
           test -f "dist/AURENIX PRO.app/Contents/MacOS/AURENIX PRO"
           find "dist/AURENIX PRO.app/Contents" -name '*.onnx' -print
+          test -n "$(find 'dist/AURENIX PRO.app/Contents' -name '*.onnx' -print -quit)"
+          file "dist/AURENIX PRO.app/Contents/MacOS/AURENIX PRO"
+          lipo -archs "dist/AURENIX PRO.app/Contents/MacOS/AURENIX PRO" | grep -q arm64
+          codesign --force --deep --sign - "dist/AURENIX PRO.app"
+          codesign --verify --deep "dist/AURENIX PRO.app"
 
       - name: Package .app into macOS DMG
         run: |
@@ -82,6 +92,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AURENIX-PRO-macOS-AppleSilicon
-          path: releases/AURENIX-PRO-macOS-AppleSilicon.dmg
+          path: |
+            releases/AURENIX-PRO-macOS-AppleSilicon.dmg
+            build-preview/aurenix-royal-gold-ui.png
           if-no-files-found: error
           retention-days: 14
