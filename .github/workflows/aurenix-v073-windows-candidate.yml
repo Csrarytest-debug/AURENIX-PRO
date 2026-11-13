@@ -76,6 +76,38 @@ jobs:
           & $iscc 'AURENIX-PRO.iss'
           if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed" }
           if (-not (Test-Path 'Installer/AURENIX-PRO-BG-Remover-V0.7.3-Setup.exe')) { throw "Installer missing" }
+      - name: Inspect Windows installer and EXE security status
+        shell: pwsh
+        working-directory: v0.7.3
+        run: |
+          $exe = (Resolve-Path 'dist/AURENIX-PRO/AURENIX-PRO.exe').Path
+          $installer = (Resolve-Path 'Installer/AURENIX-PRO-BG-Remover-V0.7.3-Setup.exe').Path
+          $files = @($exe, $installer)
+          $report = @()
+          foreach ($file in $files) {
+            $sig = Get-AuthenticodeSignature -FilePath $file
+            $hash = (Get-FileHash -Path $file -Algorithm SHA256).Hash
+            $report += [pscustomobject]@{
+              File = [IO.Path]::GetFileName($file)
+              SHA256 = $hash
+              SignatureStatus = [string]$sig.Status
+              Signer = if ($sig.SignerCertificate) { $sig.SignerCertificate.Subject } else { 'UNSIGNED' }
+            }
+            if ($sig.Status -ne 'Valid') {
+              Write-Warning "Unsigned/untrusted candidate: $file. Do not publish as a final Windows release."
+            }
+          }
+          $report | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 'WINDOWS_SECURITY_REPORT.json'
+          $mp = Get-Command Start-MpScan -ErrorAction SilentlyContinue
+          if ($mp) {
+            foreach ($file in $files) {
+              Start-MpScan -ScanType CustomScan -ScanPath $file -ErrorAction Stop
+              if (-not (Test-Path $file)) { throw "Windows Security removed or quarantined: $file" }
+            }
+            Write-Host 'Windows Defender custom scans completed on this runner; no clean-PC SmartScreen result is implied.'
+          } else {
+            Write-Warning 'Microsoft Defender scanning unavailable on runner. This candidate is not security-certified.'
+          }
       - name: Upload candidate files (not a certified release)
         uses: actions/upload-artifact@v4
         with:
@@ -83,4 +115,5 @@ jobs:
           path: |
             v0.7.3/dist/AURENIX-PRO/**
             v0.7.3/Installer/AURENIX-PRO-BG-Remover-V0.7.3-Setup.exe
+            v0.7.3/WINDOWS_SECURITY_REPORT.json
           if-no-files-found: error
