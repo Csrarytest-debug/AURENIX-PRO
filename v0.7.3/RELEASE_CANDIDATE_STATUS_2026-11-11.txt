@@ -1,0 +1,41 @@
+AURENIX PRO BG Remover V0.7.3 - Source release candidate (2026-11-11)
+
+WHAT WAS ACTUALLY DONE
+- Merged the two newer Python files with the complete source package.
+- Fixed output monitor to refresh each completed item once rather than twice.
+- Reduced RAM pressure by resizing the display preview BEFORE creating the
+  white-background QPixmap. Full-resolution editable image remains unchanged.
+- Replaced the misleading CPU-default Windows build script with a GPU-specific
+  build pipeline; preserved the separate GPU environment.
+- Added model preparation and a build-time ONNX weight check. The Windows
+  application is configured to read its bundled model offline.
+- Added CUDA 12/cuDNN 9 pip-wheel dependencies and frozen-runtime DLL search.
+- Added mocked batch tests, real OpenCV guided wire cleanup/undo test, and
+  build contract checks. Existing regression scripts remain included.
+- Preserved the navy/gold UI, BS Broadcast logo and startup branding.
+
+VALIDATED HERE (LINUX, NOT WINDOWS)
+- Python compilation and source-level regression scripts.
+- Image export for PNG, JPEG, WebP, TIFF and BMP.
+- Batch processing orchestration with mocked AI/Qt: 3 images, repeat batch,
+  unique outputs, stop behavior, and preservation of source files.
+- Real OpenCV guided-wire inpainting and undo using a synthetic test image.
+
+NOT VALIDATED HERE
+- Native PySide6 UI launch/appearance on Windows.
+- BiRefNet model download or actual background removal quality.
+- RTX 4050 CUDA inference and stability, VRAM, real batch throughput.
+- Preservation of tags on actual photographs.
+- Standalone Windows EXE, Setup EXE, or clean-PC operation.
+
+IMPORTANT
+This ZIP is source code and build scripts, NOT a compiled Windows EXE.
+No ONNX model weights are included in this ZIP. The GPU Windows build pipeline
+fetches them during build, then requires they be bundled before installer
+creation. The Windows build environment needs Python 3.12, internet for its
+one-time dependency/model setup, and Inno Setup 6 for the Setup EXE.
+
+Guided Wire Mask is NOT automatic wire detection. It can alter surrounding
+pixels; inspect edited results before saving.
+
+No files on the user's Windows D: drive have been accessed or changed.

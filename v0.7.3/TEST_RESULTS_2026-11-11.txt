@@ -1,0 +1,23 @@
+AURENIX PRO V0.7.3 — Isolated AI Worker Test Report
+Test platform: Linux Python, no PySide6/rembg/ONNX Runtime/CUDA installed.
+13/13 test_*.py scripts passed.
+
+Actual subprocess tests (using a mocked AI engine):
+  - Normal 3-image batch completes and sends JSON events: PASS
+  - Stop request delivered via file IPC and child exits: PASS
+  - Native-style child termination (exit 137) leaves parent alive: PASS
+
+Other source and runtime tests:
+  - Python AST/syntax and UI callback contracts: PASS
+  - Startup lazy-load and telemetry source checks: PASS
+  - GPU build contract and bundle path checks: PASS
+  - Real Pillow PNG/JPEG/WebP/TIFF/BMP save and original preservation: PASS
+  - Real OpenCV synthetic wire inpaint and undo: PASS
+  - Mocked batch retry and non-overwriting export: PASS
+  - Diagnostics and log report tests: PASS
+
+NOT TESTED: Actual Qt GUI, real rembg inference, NVIDIA CUDA provider,
+RTX 4050, Windows packaged EXE, installer, clean-PC portability, real photo
+quality, or system resource use on the user's PC.
+
+These tests do NOT establish a 100% working Windows application.

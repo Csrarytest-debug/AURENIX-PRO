@@ -1,0 +1,15 @@
+# Windows Python 3.12 + NVIDIA RTX 4050: force CUDA 12 / cuDNN 9.
+# IMPORTANT: Do not install onnxruntime-gpu[cuda,cudnn] without a version pin:
+# it can resolve CUDA 13 wheel dependencies incompatible with this release.
+PySide6>=6.6,<7
+Pillow>=10,<13
+rembg>=2.0.59,<3
+onnxruntime-gpu==1.22.0
+nvidia-cudnn-cu12>=9,<10
+nvidia-cublas-cu12>=12,<13
+nvidia-cuda-runtime-cu12>=12,<13
+nvidia-cuda-nvrtc-cu12>=12,<13
+nvidia-nvjitlink-cu12>=12,<13
+psutil>=5.9,<8
+opencv-python-headless>=4.8,<5
+pyinstaller>=6,<7

@@ -1,0 +1,49 @@
+AURENIX PRO BG Remover V0.7.3 - ISOLATED AI ENGINE / RAM CRASH FIX
+2026-11-11
+
+WHAT CHANGED
+1. The UI no longer executes AI inference in its own process. On Start, a
+   separate OS child process is launched via QProcess. Native CUDA/ONNX crashes
+   can kill the AI child without directly terminating the GUI.
+2. File-based JSON event and command IPC is compatible with PyInstaller's
+   --windowed mode, where sys.stdout and sys.stdin may be unavailable.
+3. A parent-side watchdog checks the child RAM every 1.5 seconds and kills the
+   child if its resident memory exceeds min(6 GiB, 40% of installed RAM), or
+   system free RAM falls below 1 GiB. This is a protective limit, not a
+   guarantee against instantaneous out-of-memory failures.
+4. Pause, Resume and Stop are sent to the child; Stop forcibly terminates
+   the child after eight seconds if it cannot exit gracefully.
+5. The AI model loads only after Start Processing. After processing finishes,
+   the AI process exits and the operating system reclaims its memory.
+6. The UI RAM monitor now differentiates SYSTEM memory percentage from the
+   APP's resident memory, to avoid falsely attributing system-wide RAM to the app.
+7. Previous image processing, preview, guided wire cleanup, original-image
+   preservation, output destination and BS Broadcast UI are retained.
+8. GPU build now runs a REAL inference smoke test using the PACKAGED EXE
+   before it allows Inno Setup to create an installer. It refuses to call
+   a provider-only check proof of successful inference.
+
+TESTS PERFORMED IN THIS ENVIRONMENT
+- 13/13 Python test scripts passed.
+- Real OS subprocess test: completed 3 mocked images using JSON file IPC.
+- Real OS subprocess test: stop during processing without losing parent.
+- Real OS subprocess test: simulated native child crash (exit 137), parent
+  test process remained alive.
+- PIL image export formats and OpenCV wire cleanup were exercised by tests.
+- All Python files compiled successfully; ZIP integrity and manifest verified.
+
+NOT YET VERIFIED
+- Actual Qt window launch: PySide6 is not installed in this Linux runtime.
+- Actual rembg/ONNX inference: rembg and onnxruntime are unavailable here.
+- RTX 4050 GPU / Windows CUDA/cuDNN runtime and memory under real workloads.
+- PyInstaller EXE, Inno Setup installer, and clean Windows PC portability.
+- Visual quality of real product-image matting or automatic wire detection.
+
+WINDOWS BUILD PIPELINE (AUTOMATED, NOT RUN HERE)
+ONE_CLICK_WINDOWS_BUILD.bat creates an isolated environment and runs the
+GPU build. The build tests source, prepares model weights, packages the EXE,
+checks the bundled model, and runs VERIFY_WINDOWS_GPU.py on the EXE before
+attempting an installer. A clean Windows PC test is still required.
+
+The ZIP is corrected SOURCE, not an installed or proven Windows EXE.
+No existing D: project or Windows installation has been modified.

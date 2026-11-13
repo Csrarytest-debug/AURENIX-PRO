@@ -1,0 +1,6 @@
+18/18 regression scripts passed on Linux.
+Includes synthetic OpenCV thin-wire alpha removal, multiple product bodies,
+product-label pixel preservation, real PNG output with mocked AI,
+disabled-mode behavior, GUI/IPC source contract, and earlier source checks.
+Not tested: actual ONNX model inference, Windows RTX 4050, real cable photographs,
+EXE portability, or sustained GPU/RAM behavior.

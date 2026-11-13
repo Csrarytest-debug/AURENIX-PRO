@@ -1,0 +1,35 @@
+AURENIX PRO V0.7.3 — WINDOWS BUILD INSTRUCTIONS
+
+THIS ARCHIVE CONTAINS SOURCE CODE, NOT A COMPILED WINDOWS EXE.
+
+The existing scripts automate the Windows build, but cannot run on Linux.
+Requirements for a Windows x64 build machine:
+- Windows 10/11 x64, Python 3.12 (py launcher), internet for initial dependencies/models.
+- NVIDIA driver, compatible CUDA 12 / cuDNN 9 runtime for GPU inference.
+- Inno Setup 6 for the professional Setup EXE.
+
+Extract the ZIP to a NEW folder (do not overwrite your current application).
+Run ONE_CLICK_WINDOWS_BUILD.bat. It installs dependencies into a new local
+.venv-gpu environment, executes regression tests, downloads/validates both
+models, builds the standalone folder, and runs a packaged GPU inference test.
+It will refuse to build an installer if the GPU inference test fails.
+
+Expected outputs AFTER successful Windows build:
+  dist\AURENIX-PRO\AURENIX-PRO.exe
+  Installer\AURENIX-PRO-BG-Remover-V0.7.3-Setup.exe
+
+The EXE is a PyInstaller ONEDIR build. Distribute the WHOLE dist\AURENIX-PRO
+folder, not only the .exe file. The Setup EXE packages this folder.
+
+Clean-machine Windows testing is STILL REQUIRED before a production release:
+- launch on a clean compatible Windows PC without Python
+- check idle/startup RAM, RTX 4050 inference, source preservation
+- check 1-image, 10-image batch, pause/resume/stop, output previews
+- confirm installer, uninstall, and BS Broadcast interface
+
+SOURCE REPAIR IN THIS ARCHIVE:
+- Bundled model directory is configured before isolated-worker dispatch.
+- Frozen worker refuses missing model weights instead of downloading at runtime.
+- Process-isolated inference and memory watchdog retained.
+
+The model weights, Windows EXE and Setup EXE are NOT bundled in this ZIP.

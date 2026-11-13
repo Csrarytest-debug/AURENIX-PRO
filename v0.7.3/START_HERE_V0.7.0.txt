@@ -1,0 +1,17 @@
+AURENIX PRO BG Remover V0.7.0 — WINDOWS SOURCE TEST PACKAGE
+
+This package carries forward the V0.6.4 features and changes the product name in the title bar, centered header, splash screen, installer configuration, and desktop shortcut. Previous versions are not modified.
+
+THIS IS NOT A FINISHED EXE OR INSTALLER. Model weights not bundled; Windows native testing still required.
+
+WINDOWS TEST:
+1. Extract into a separate folder (do not overwrite V0.6.2).
+2. Open PowerShell in this folder.
+3. If Python 3.12 is installed, run: py -3.12 -m venv .venv
+4. Run: .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+5. Run: .\.venv\Scripts\python.exe aurenix_pro.py
+6. Verify branding, selectable output folder, batch export, and processing quality.
+
+Installer build after verification: BUILD_WINDOWS.bat (requires PyInstaller and Inno Setup).
+
+Known unfinished requirements: real GPU/AI speed validation, offline model bundling, exact visual fidelity, clean-PC standalone verification. No installer is claimed ready.

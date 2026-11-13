@@ -1,0 +1,6 @@
+PySide6>=6.6,<7
+Pillow>=10,<13
+rembg[cpu]>=2.0.59,<3
+psutil>=5.9,<8
+pyinstaller>=6,<7
+opencv-python-headless>=4.8,<5
