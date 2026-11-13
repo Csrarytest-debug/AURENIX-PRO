@@ -1,0 +1,51 @@
+name: AURENIX V0.7.3 Windows candidate (not certified)
+on:
+  push:
+    branches: [aurenix-v0.7.3-source-2026-11-13]
+  workflow_dispatch:
+
+jobs:
+  windows-candidate:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require actual V0.7.3 source before building
+        shell: pwsh
+        run: |
+          $required = @('v0.7.3/aurenix_pro.py','v0.7.3/background_remover_pro.py','v0.7.3/inference_worker.py','v0.7.3/isolated_worker.py','v0.7.3/requirements-gpu.txt','v0.7.3/wire_cleanup.py')
+          $missing = @($required | Where-Object { -not (Test-Path $_) })
+          if ($missing.Count -gt 0) {
+            Write-Error "V0.7.3 source sync incomplete: $($missing -join ', '). Do not package the older main-branch app as V0.7.3."
+            exit 1
+          }
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: v0.7.3/requirements-gpu.txt
+      - name: Install pinned GPU dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r v0.7.3/requirements-gpu.txt
+      - name: Syntax-check full V0.7.3 source
+        shell: pwsh
+        run: |
+          python -m compileall -q v0.7.3
+      - name: Run source regression tests
+        shell: pwsh
+        working-directory: v0.7.3
+        run: |
+          python -m unittest discover -p 'test_*.py' -v
+      - name: Build Windows candidate EXE
+        shell: pwsh
+        working-directory: v0.7.3
+        run: |
+          python -m PyInstaller --noconfirm --clean --windowed --name AURENIX-PRO --collect-all rembg --collect-all onnxruntime --collect-all cv2 --add-data 'assets;assets' aurenix_pro.py
+      - name: Upload Windows candidate (NOT GPU-certified)
+        uses: actions/upload-artifact@v4
+        with:
+          name: AURENIX-PRO-V0.7.3-Windows-UNVERIFIED
+          path: v0.7.3/dist/AURENIX-PRO/
+          if-no-files-found: error
