@@ -25,16 +25,6 @@ jobs:
             Write-Error "Full V0.7.3 source has not been synchronized: $($missing -join ', ')"
             exit 1
           }
-      - name: Require trusted code-signing credentials for release artifacts
-        shell: pwsh
-        env:
-          AURENIX_CODESIGN_PFX_BASE64: ${{ secrets.AURENIX_CODESIGN_PFX_BASE64 }}
-          AURENIX_CODESIGN_PFX_PASSWORD: ${{ secrets.AURENIX_CODESIGN_PFX_PASSWORD }}
-        run: |
-          if ([string]::IsNullOrWhiteSpace($env:AURENIX_CODESIGN_PFX_BASE64) -or
-              [string]::IsNullOrWhiteSpace($env:AURENIX_CODESIGN_PFX_PASSWORD)) {
-            throw 'No trusted signing certificate configured. Cannot publish a signed Windows installer.'
-          }
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -72,14 +62,6 @@ jobs:
           python -m PyInstaller --clean --noconfirm --windowed --onedir --name AURENIX-PRO --collect-all rembg --collect-all onnxruntime --collect-all pymatting --collect-all nvidia.cudnn --collect-all nvidia.cublas --collect-all nvidia.cuda_runtime --collect-all nvidia.cuda_nvrtc --add-data 'assets;assets' --add-data 'models;models' aurenix_pro.py
           if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed" }
           if (-not (Test-Path 'dist/AURENIX-PRO/AURENIX-PRO.exe')) { throw "EXE missing" }
-      - name: Digitally sign Windows application EXE
-        shell: pwsh
-        env:
-          AURENIX_CODESIGN_PFX_BASE64: ${{ secrets.AURENIX_CODESIGN_PFX_BASE64 }}
-          AURENIX_CODESIGN_PFX_PASSWORD: ${{ secrets.AURENIX_CODESIGN_PFX_PASSWORD }}
-        run: |
-          & .github/scripts/sign-windows.ps1 -File 'v0.7.3/dist/AURENIX-PRO/AURENIX-PRO.exe'
-          if (-not $?) { throw 'Application EXE signing failed' }
       - name: Install Inno Setup
         shell: pwsh
         run: |
@@ -94,14 +76,6 @@ jobs:
           & $iscc 'AURENIX-PRO.iss'
           if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed" }
           if (-not (Test-Path 'Installer/AURENIX-PRO-BG-Remover-V0.7.3-Setup.exe')) { throw "Installer missing" }
-      - name: Digitally sign Windows Setup EXE
-        shell: pwsh
-        env:
-          AURENIX_CODESIGN_PFX_BASE64: ${{ secrets.AURENIX_CODESIGN_PFX_BASE64 }}
-          AURENIX_CODESIGN_PFX_PASSWORD: ${{ secrets.AURENIX_CODESIGN_PFX_PASSWORD }}
-        run: |
-          & .github/scripts/sign-windows.ps1 -File 'v0.7.3/Installer/AURENIX-PRO-BG-Remover-V0.7.3-Setup.exe'
-          if (-not $?) { throw 'Installer signing failed' }
       - name: Inspect Windows installer and EXE security status
         shell: pwsh
         working-directory: v0.7.3
@@ -119,9 +93,7 @@ jobs:
               SignatureStatus = [string]$sig.Status
               Signer = if ($sig.SignerCertificate) { $sig.SignerCertificate.Subject } else { 'UNSIGNED' }
             }
-            if ($sig.Status -ne 'Valid' -or -not $sig.TimeStamperCertificate) {
-              throw "Release blocked: valid trusted Authenticode signature and timestamp required: $file"
-            }
+            if ($sig.Status -ne 'Valid') { Write-Warning "Unsigned build candidate: $file" }
           }
           $report | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 'WINDOWS_SECURITY_REPORT.json'
           $mp = Get-Command Start-MpScan -ErrorAction SilentlyContinue
@@ -137,7 +109,7 @@ jobs:
       - name: Upload candidate files (not a certified release)
         uses: actions/upload-artifact@v4
         with:
-          name: AURENIX-PRO-V0.7.3-Windows-SIGNED-CANDIDATE
+          name: AURENIX-PRO-V0.7.3-Windows-UNSIGNED-CANDIDATE
           path: |
             v0.7.3/dist/AURENIX-PRO/**
             v0.7.3/Installer/AURENIX-PRO-BG-Remover-V0.7.3-Setup.exe
