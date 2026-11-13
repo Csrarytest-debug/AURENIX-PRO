@@ -1,16 +1,18 @@
-# AURENIX PRO BG Remover V0.7.3 — source synchronization (in progress)
+# AURENIX PRO BG Remover V0.7.3 — source sync verified
 
-This branch is a staging area for the November 12, 2026 V0.7.3 source snapshot.
+**Source upload: COMPLETE.** The full November 12, 2026 source snapshot has been committed under `v0.7.3/`.
 
-**Do not build a release from this branch yet.** The full 56-entry source archive has not been committed here. The original `main` branch is preserved unchanged.
+- Archive: `AURENIX_PRO_V073_CUDA12_ROBOCOPY_FIXED_2026-11-12.zip`
+- Verified on 2026-11-13: **56 of 56 files** match their original Git blob SHA-1 exactly, including the BS Broadcast PNG.
+- Source sync commit: `3d6908ff93914c7113c49679d488bee0775e92b7`.
+- The original `main` branch remains unchanged; this is the V0.7.3 staging branch.
+- CI: `.github/workflows/aurenix-v073-windows-candidate.yml` builds a **candidate**, not a certified release.
 
-Uploaded so far:
-- `v0.7.3/wire_cleanup.py` — conservative alpha-mask wire trimming. It does **not** perform semantic cable recognition or inpainting, and is not guaranteed to remove wires crossing equipment.
+## Release blockers
 
-Known unresolved release blockers:
-- ONNX Runtime CUDA provider fails initialization with Windows WinError 1114 in both the Python environment and packaged EXE.
-- RAM/GPU stability is not certified.
-- Automatic wire removal on real product photographs is not validated.
-- Final Windows EXE/installer is not certified.
+- GitHub-hosted Windows runners do not verify NVIDIA RTX 4050 hardware or the reported ONNX Runtime CUDA WinError 1114.
+- Real photographs must still validate cable removal, product-label preservation, and output quality.
+- Sustained RAM/GPU stability, clean-Windows-PC installation, and final EXE/installer operation remain unverified.
+- A passing source regression suite does not establish release certification.
 
-The authoritative complete source package in the ChatGPT working environment is `AURENIX_PRO_V073_CUDA12_ROBOCOPY_FIXED_2026-11-12.zip` (56 entries). Additional repair tools were generated after that snapshot; these are not a verified release.
+**Do not mark the release final until the above checks pass.**
