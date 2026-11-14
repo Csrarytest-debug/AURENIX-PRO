@@ -42,7 +42,7 @@ def main(config_path):
             model = config.get('model_name', 'u2net')
             prefix = 'u2net' if model == 'u2net' else 'birefnet'
             if not any(p.is_file() and p.name.lower().startswith(prefix)
-                       for p in model_dir.glob('*.onnx')):
+                       for p in model_dir.rglob('*.onnx')):
                 raise FileNotFoundError(f'Bundled AI model missing: {model} in {model_dir}')
         # Qt is imported only into the child; no QApplication is created.
         from background_remover_pro import BatchWorker
