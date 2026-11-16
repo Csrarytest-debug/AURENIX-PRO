@@ -94,6 +94,33 @@ jobs:
           & $iscc 'AURENIX-PRO.iss'
           if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed" }
           if (-not (Test-Path 'Installer/AURENIX-PRO-BG-Remover-V0.7.3-Setup.exe')) { throw "Installer missing" }
+      - name: Silent install, run installed EXE inference and GUI, then uninstall
+        shell: pwsh
+        working-directory: v0.7.3
+        timeout-minutes: 20
+        run: |
+          $setup = (Resolve-Path 'Installer/AURENIX-PRO-BG-Remover-V0.7.3-Setup.exe').Path
+          $installDir = Join-Path $env:RUNNER_TEMP 'AURENIX-V073-Installed-Smoke'
+          New-Item -ItemType Directory -Force -Path $installDir | Out-Null
+          $log = Join-Path $env:RUNNER_TEMP 'aurenix-v073-installer-smoke.log'
+          $args = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=$installDir", "/LOG=$log")
+          $p = Start-Process -FilePath $setup -ArgumentList $args -Wait -PassThru
+          if ($p.ExitCode -ne 0) {
+            if (Test-Path $log) { Get-Content $log -Tail 50 }
+            throw "Silent Windows installation failed: exit $($p.ExitCode)"
+          }
+          $installed = Join-Path $installDir 'AURENIX-PRO.exe'
+          if (-not (Test-Path $installed)) { throw "Installer did not deploy AURENIX-PRO.exe" }
+          python VERIFY_WINDOWS_GPU.py "$installed" --cpu
+          if ($LASTEXITCODE -ne 0) { throw "Installed EXE failed real CPU inference" }
+          python VERIFY_WINDOWS_GUI.py "$installed"
+          if ($LASTEXITCODE -ne 0) { throw "Installed GUI failed startup" }
+          $uninstaller = Join-Path $installDir 'unins000.exe'
+          if (-not (Test-Path $uninstaller)) { throw "Inno Setup uninstaller missing" }
+          $u = Start-Process -FilePath $uninstaller -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -Wait -PassThru
+          if ($u.ExitCode -ne 0) { throw "Silent uninstall failed: exit $($u.ExitCode)" }
+          if (Test-Path $installed) { throw "Uninstall left main EXE installed" }
+          Write-Host 'PASS installer, installed EXE CPU inference, offscreen GUI startup, and uninstall on Windows runner. Clean-PC and RTX 4050 certification still pending.'
       - name: Inspect Windows installer and EXE security status
         shell: pwsh
         working-directory: v0.7.3
