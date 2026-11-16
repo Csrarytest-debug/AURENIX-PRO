@@ -4,6 +4,10 @@ on:
     branches: [aurenix-v0.7.3-source-2026-11-13]
   workflow_dispatch:
 
+concurrency:
+  group: aurenix-v073-windows-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   windows-candidate:
     runs-on: windows-2022
@@ -69,6 +73,13 @@ jobs:
         run: |
           python VERIFY_WINDOWS_GPU.py dist/AURENIX-PRO/AURENIX-PRO.exe --cpu
           if ($LASTEXITCODE -ne 0) { throw "Real packaged EXE inference FAILED; installer blocked" }
+      - name: Check packaged Windows GUI startup (offscreen smoke)
+        shell: pwsh
+        working-directory: v0.7.3
+        timeout-minutes: 3
+        run: |
+          python VERIFY_WINDOWS_GUI.py dist/AURENIX-PRO/AURENIX-PRO.exe
+          if ($LASTEXITCODE -ne 0) { throw "Packaged GUI failed startup; installer blocked" }
       - name: Install Inno Setup
         shell: pwsh
         run: |

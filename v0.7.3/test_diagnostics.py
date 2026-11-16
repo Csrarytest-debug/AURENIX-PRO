@@ -20,7 +20,7 @@ try:
                 raise RuntimeError('test failure for reporting')
             except RuntimeError as err:
                 record_error('Test processing', err)
-            log_path = folder / 'aurenix.log'
+            log_path = folder / f'aurenix-{os.getpid()}.log'
             assert log_path.exists()
             contents = log_path.read_text(encoding='utf-8')
             assert 'test failure for reporting' in contents

@@ -23,7 +23,9 @@ def log_directory():
 
 def configure_logging():
     folder = log_directory()
-    target = folder / 'aurenix.log'
+    # Each OS process has its own rotating log. Sharing a single rotating log
+    # between the GUI and isolated AI worker can cause WinError 32 on Windows.
+    target = folder / f'aurenix-{os.getpid()}.log'
     logger = logging.getLogger('aurenix')
     if not logger.handlers:
         logger.setLevel(logging.INFO)
@@ -65,7 +67,16 @@ def export_report(destination):
     target = Path(destination)
     if not target.parent.exists():
         raise FileNotFoundError(str(target.parent))
-    log = log_directory() / 'aurenix.log'
+    folder = log_directory()
+    log = folder / f'aurenix-{os.getpid()}.log'
+    if not log.exists():
+        # Support both legacy logs and logs written by the isolated worker.
+        candidates = list(folder.glob('aurenix-*.log'))
+        legacy = folder / 'aurenix.log'
+        if legacy.is_file():
+            candidates.append(legacy)
+        if candidates:
+            log = max(candidates, key=lambda item: item.stat().st_mtime)
     if log.exists():
         copyfile(log, target)
     else:
