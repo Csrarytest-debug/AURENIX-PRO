@@ -62,6 +62,13 @@ jobs:
           python -m PyInstaller --clean --noconfirm --windowed --onedir --name AURENIX-PRO --collect-all rembg --collect-all onnxruntime --collect-all pymatting --collect-all nvidia.cudnn --collect-all nvidia.cublas --collect-all nvidia.cuda_runtime --collect-all nvidia.cuda_nvrtc --add-data 'assets;assets' --add-data 'models;models' aurenix_pro.py
           if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed" }
           if (-not (Test-Path 'dist/AURENIX-PRO/AURENIX-PRO.exe')) { throw "EXE missing" }
+      - name: Verify packaged EXE with real CPU inference (CI runner has no NVIDIA GPU)
+        shell: pwsh
+        working-directory: v0.7.3
+        timeout-minutes: 12
+        run: |
+          python VERIFY_WINDOWS_GPU.py dist/AURENIX-PRO/AURENIX-PRO.exe --cpu
+          if ($LASTEXITCODE -ne 0) { throw "Real packaged EXE inference FAILED; installer blocked" }
       - name: Install Inno Setup
         shell: pwsh
         run: |
