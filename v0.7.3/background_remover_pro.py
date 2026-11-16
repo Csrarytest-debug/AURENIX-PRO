@@ -253,9 +253,13 @@ class BatchWorker(QThread):
             with _SESSION_LOCK:
                 session = _SESSION_CACHE.get(model)
                 if session is None:
-                    register_cuda_libraries()
+                    # CPU-only mode is used by the no-GPU Windows CI runner. It
+                    # is opt-in; ordinary releases still try CUDA by default.
+                    force_cpu = os.environ.get("AURENIX_FORCE_CPU") == "1"
+                    if not force_cpu:
+                        register_cuda_libraries()
                     import onnxruntime as ort
-                    if hasattr(ort, 'preload_dlls'):
+                    if not force_cpu and hasattr(ort, 'preload_dlls'):
                         # ONNX Runtime 1.21+ supports loading NVIDIA pip-wheel
                         # CUDA/cuDNN DLLs before the CUDA provider starts.
                         try:
@@ -263,9 +267,10 @@ class BatchWorker(QThread):
                         except Exception as exc:
                             record_error('CUDA DLL preload warning', exc)
                     available = ort.get_available_providers()
-                    requested = (["CUDAExecutionProvider", "CPUExecutionProvider"]
-                                 if "CUDAExecutionProvider" in available
-                                 else ["CPUExecutionProvider"])
+                    requested = (["CPUExecutionProvider"] if force_cpu else
+                                 ["CUDAExecutionProvider", "CPUExecutionProvider"]
+                                 if "CUDAExecutionProvider" in available else
+                                 ["CPUExecutionProvider"])
                     if "CUDAExecutionProvider" in requested:
                         verify_cudnn_runtime()
                     session = new_session(model, providers=requested)
