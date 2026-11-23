@@ -21,7 +21,7 @@ assert "self.fine_edge_checkbox.setChecked(False)" in ui
 assert "self.current_fine_edge_matting = self.fine_edge_checkbox.isChecked()" in ui
 assert "self.worker.fine_edge_matting" in (root / "background_remover_pro.py").read_text(encoding="utf-8")
 assert "'fine_edge_matting': self.fine_edge_matting" in adapter
-assert "'fine_edge_matting')" in child
+assert "'fine_edge_matting', 'wire_policy_overrides')" in child
 
 original_memory = psutil.virtual_memory
 psutil.virtual_memory = lambda: SimpleNamespace(
