@@ -313,17 +313,23 @@ class AurenixPro(BackgroundRemoverPro):
         cleanup_layout.addWidget(self.auto_wire_checkbox)
         self.cable_context=QComboBox()
         self.cable_context.addItems([
-            'Camera / Rack — remove detached background wires',
-            'Adapter Kit — preserve adapter cables and leads'])
+            'Auto Context',
+            'Remove Stray/Background Wires',
+            'Keep Attached/Adapter Cables',
+            'Keep All Cables'])
         self.cable_context.setToolTip(
-            'Applies to the selected input only, not the full batch. '
-            'AJA IMG_5712 and IMG_5703 are automatically protected.')
+            'Per-image override, bound to the exact selected input path for '
+            'processing, pause/resume and Retry Failed. Auto Context protects '
+            'AJA IMG_5712 and IMG_5703. On unknown images it defaults to '
+            'the safer attached-cable-preserving mode. Detection is limited.')
         self.cable_context.setEnabled(False)
         self.cable_context.currentIndexChanged.connect(self.set_selected_cable_context)
         cleanup_layout.addWidget(QLabel('Selected Image — Cable Handling'))
         cleanup_layout.addWidget(self.cable_context)
-        note=QLabel('Attached cables are protected; uncertain crossings may '
-                    'require review. Model-based wire recognition is not yet validated.')
+        note=QLabel('Auto protects known AJA adapter examples; one photo = '
+                    'one output. Remove Stray trims only detached mask strands. '
+                    'Keep Attached protects nearby leads; Keep All skips alpha '
+                    'wire trimming. Existing AI mask omissions still need review.')
         note.setWordWrap(True)
         cleanup_layout.addWidget(note)
         settings_layout.addWidget(cleanup_box)
@@ -440,28 +446,35 @@ class AurenixPro(BackgroundRemoverPro):
         super().select_image(*args)
         if not hasattr(self, 'cable_context'):
             return
-        from wire_cleanup import choose_wire_policy, is_known_aja_sample
+        from wire_cleanup import get_requested_policy, POLICIES
         path=self.current_image()
-        selected=choose_wire_policy(path, self.wire_policy_overrides)
+        selected=get_requested_policy(path, self.wire_policy_overrides)
         self.cable_context.blockSignals(True)
-        self.cable_context.setCurrentIndex(1 if selected == 'preserve_all' else 0)
-        self.cable_context.setEnabled(
-            bool(path) and self.worker is None and not is_known_aja_sample(path))
+        self.cable_context.setCurrentIndex(POLICIES.index(selected))
+        self.cable_context.setEnabled(bool(path) and self.worker is None)
         self.cable_context.blockSignals(False)
 
     def set_selected_cable_context(self, index):
         path=self.current_image()
         if not path or self.worker is not None:
             return
-        from wire_cleanup import is_known_aja_sample
-        if is_known_aja_sample(path):
-            return  # AJA example power leads are protected without manual steps
-        self.wire_policy_overrides[path] = (
-            'preserve_all' if index == 1 else 'selective')
+        from wire_cleanup import POLICIES, choose_wire_policy
+        if not 0 <= index < len(POLICIES):
+            return
+        selected=POLICIES[index]
+        # Setting Auto removes the override; the known AJA default remains.
+        if selected == 'auto_context':
+            self.wire_policy_overrides.pop(path, None)
+        else:
+            self.wire_policy_overrides[path] = selected
+        effective=choose_wire_policy(path, self.wire_policy_overrides)
         self.statusBar().showMessage(
-            f'{Path(path).name}: ' +
-            ('preserve adapter leads' if index == 1 else
-             'trim only detached background strands'))
+            f'{Path(path).name}: {selected} (effective: {effective})')
+
+    def batch_finished(self):
+        super().batch_finished()
+        # Re-enable the per-image selector only after the worker is disposed.
+        self.select_image()
 
     def add_images(self,files):
         previous=len(self.images)
