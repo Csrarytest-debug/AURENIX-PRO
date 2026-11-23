@@ -50,7 +50,7 @@ def main(config_path):
                              int(config['width']), int(config['height']))
         for name in ('bg_mode', 'bg_color', 'export_format', 'export_quality',
                      'export_dpi', 'model_name', 'auto_wire_cleanup',
-                     'fine_edge_matting'):
+                     'fine_edge_matting', 'wire_policy_overrides'):
             if name in config:
                 setattr(worker, name, config[name])
         worker.progress.connect(lambda *a: emit('progress', *a))
