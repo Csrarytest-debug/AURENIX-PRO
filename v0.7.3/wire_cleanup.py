@@ -109,13 +109,12 @@ def remove_loose_wires(image: Image.Image, *, mode="remove_stray") -> tuple[Imag
     # For adapter kits, retain near-equipment thin components as well. Coiled
     # power leads can be separated by segmentation and must not disappear.
     if mode == "keep_attached":
-        protect_near = cv2.dilate(
-            core.astype(np.uint8),
-            cv2.getStructuringElement(
-                cv2.MORPH_ELLIPSE,
-                (2 * max(16, round(min(height, width) * .25)) + 1,) * 2
-            )
-        ) != 0
+        # Distance transform avoids a huge 25%-image-size morphology
+        # kernel that could stall Windows or spike RAM on large batches.
+        protect_radius = max(16, round(min(height, width) * .25))
+        protect_near = cv2.distanceTransform(
+            (~core).astype(np.uint8), cv2.DIST_L2, 3
+        ) <= protect_radius
         near_ids = np.unique(labels[protect_near & (foreground != 0)])
         keep_component[near_ids] = True
         keep_component[0] = False
