@@ -1,7 +1,7 @@
 """Packaged Windows GUI startup smoke test (not a clean-PC UI certification).
 
-Start the built EXE using Qt offscreen platform, verify it does not exit
-immediately, and terminate it after the startup observation period.
+Start the built EXE using Qt offscreen platform. Observe idle GUI memory
+for 45 seconds and reject early exit, runaway RAM, or unexpected children.
 Does not test manual UI workflows, image quality, or GPU inference.
 """
 import os
@@ -29,7 +29,28 @@ def main():
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
         try:
-            time.sleep(10)
+            import psutil
+            handle = psutil.Process(proc.pid)
+            peak_rss = 0
+            deadline = time.monotonic() + 45
+            while time.monotonic() < deadline:
+                code = proc.poll()
+                if code is not None:
+                    break
+                try:
+                    peak_rss = max(peak_rss, handle.memory_info().rss)
+                    # No AI is processing yet. GUI should not consume >1.5 GiB
+                    # or spawn an AI child solely by opening the app.
+                    if peak_rss > 1536 * 1024**2:
+                        raise MemoryError(
+                            f'Idle GUI RAM exceeded 1.5 GiB: {peak_rss / 1024**2:.0f} MiB'
+                        )
+                    children = handle.children(recursive=True)
+                    if any('aurenix-pro.exe' in p.name().lower() for p in children):
+                        raise RuntimeError('AI worker unexpectedly started during idle GUI startup')
+                except psutil.NoSuchProcess:
+                    break
+                time.sleep(1)
             code = proc.poll()
             if code is not None:
                 logs = list(Path(env['LOCALAPPDATA']).rglob('aurenix*.log'))
@@ -40,8 +61,9 @@ def main():
                     f'Packaged GUI closed during startup (exit={code}). '
                     f'Last logs: {" | ".join(details) if details else "none"}'
                 )
-            print('PASS packaged GUI remains running after 10-second startup observation; '
-                  'functional GUI and clean-PC testing still required', flush=True)
+            print(f'PASS packaged GUI stable 45s while idle; peak RSS '
+                  f'{peak_rss / 1024**2:.0f} MiB (limit 1536 MiB). '
+                  'Functional GUI and clean-PC tests still required', flush=True)
         finally:
             if proc.poll() is None:
                 proc.kill()
