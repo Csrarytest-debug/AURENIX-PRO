@@ -23,6 +23,9 @@ with tempfile.TemporaryDirectory() as temp:
     Image.new('RGB', (640, 400), (200, 200, 200)).save(original)
     worker = core.BatchWorker([str(original)], base / 'auto', 640, 400)
     worker.auto_wire_cleanup = True
+    # Unknown photos use attached-lead protection by default; this scenario
+    # explicitly requests the per-input detached-background cleanup mode.
+    worker.wire_policy_overrides[str(original)] = "remove_stray"
     worker.run()
     assert len(worker.completed.events) == 1, worker.failed.events
     with Image.open(worker.completed.events[0][1]) as result:
