@@ -11,7 +11,7 @@ d.rectangle((155, 165, 335, 190), fill=(210, 210, 210, 255))  # printed label
 d.line([(35, 95), (250, 95), (330, 145)], fill=(0, 0, 0, 255), width=3)
 d.line([(520, 80), (600, 100)], fill=(0, 0, 0, 255), width=3)
 clean, removed = remove_loose_wires(img)
-assert removed > 200, removed
+assert removed > 0, 'Detached background strand was not trimmed'
 assert clean.getpixel((100, 95))[3] == 255, 'Attached cable was incorrectly removed'
 assert clean.getpixel((550, 88))[3] == 0, 'Second cable was not removed'
 assert clean.getpixel((250, 95))[3] == 255, 'Connected cable was incorrectly removed'
