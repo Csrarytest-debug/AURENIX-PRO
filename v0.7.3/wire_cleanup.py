@@ -1,71 +1,105 @@
-"""Conservative automatic cleanup of thin, loose strands in a rembg alpha mask.
+"""Conservative, per-photo cable handling for AURENIX V0.7.3.
 
-The original RGB pixels are NEVER altered. This only removes foreground alpha
-outside sufficiently substantial foreground regions. It is not semantic cable
-recognition and cannot safely erase cables crossing a product or its labels.
-No AI model is loaded here. OpenCV is imported only while processing.
+This is NOT semantic cable detection or inpainting. Connected foreground,
+including equipment wiring, remains protected; isolated thin background
+strands may be removed. Upstream rembg can still mis-segment fine wires.
 """
+from pathlib import Path
+import re
 
 from PIL import Image
 
+_AJA_ADAPTER_SAMPLES = re.compile(r"^img_(?:5712|5703)(?:$|[^0-9])", re.IGNORECASE)
 
-def remove_loose_wires(image: Image.Image) -> tuple[Image.Image, int]:
-    """Return (cleaned RGBA image, number of removed foreground pixels).
 
-    If segmentation has no substantial object, or too much would be removed,
-    leave the image unchanged rather than damage the product. All image data
-    remains in memory; the caller owns file saving and undo/editing.
+def is_known_aja_sample(path):
+    """Exact user-provided AJA kit photo IDs; not general visual recognition."""
+    return bool(path and _AJA_ADAPTER_SAMPLES.match(Path(str(path)).stem))
+
+
+def choose_wire_policy(image_path, overrides=None):
+    """Resolve policy for ONE photo. Known AJA samples always retain leads."""
+    if is_known_aja_sample(image_path):
+        return "preserve_all"
+    if not image_path:
+        return "selective"
+    choice = (overrides or {}).get(str(image_path), "selective")
+    if choice not in ("selective", "preserve_all"):
+        raise ValueError("Unknown per-photo cable policy")
+    return choice
+
+
+def remove_loose_wires(image: Image.Image, *, mode="selective") -> tuple[Image.Image, int]:
+    """Trim only detached thin strands; preserve device-connected components.
+
+    preserve_all: skip mask trimming (adapter kit). This cannot recover wires
+    that the earlier segmentation stage has excluded from the foreground.
     """
-    if image.mode != 'RGBA':
-        raise ValueError('Wire cleanup expects an RGBA segmentation result')
+    if image.mode != "RGBA":
+        raise ValueError("Wire cleanup expects an RGBA segmentation result")
+    if mode not in ("selective", "preserve_all"):
+        raise ValueError("Unknown per-photo cable policy")
+    if mode == "preserve_all":
+        return image, 0
+
     import cv2
     import numpy as np
 
-    alpha = np.asarray(image.getchannel('A'))
+    alpha = np.asarray(image.getchannel("A"))
     height, width = alpha.shape
     if min(height, width) < 96:
         return image, 0
 
     foreground = (alpha >= 24).astype(np.uint8) * 255
-    foreground_count = int(cv2.countNonZero(foreground))
-    if foreground_count < 100:
+    fg_count = int(cv2.countNonZero(foreground))
+    if fg_count < 100:
         return image, 0
 
-    # A thin cable disappears under opening; the substantial equipment body
-    # remains. Kernel scales with image size, not the selected export DPI.
     diameter = min(21, max(5, round(min(height, width) * 0.008)))
     if diameter % 2 == 0:
         diameter += 1
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (diameter, diameter))
-    thick_regions = cv2.morphologyEx(foreground, cv2.MORPH_OPEN, kernel)
-
-    # Keep multiple separate objects (e.g. camera and power supply), not just
-    # the largest component. Tiny residual islands are excluded.
-    n, labels, stats, _ = cv2.connectedComponentsWithStats(thick_regions, 8)
-    min_core_area = max(30, int(foreground_count * 0.0004))
-    valid = np.zeros(n, dtype=np.uint8)
-    for i in range(1, n):
-        if stats[i, cv2.CC_STAT_AREA] >= min_core_area:
-            valid[i] = 255
-    valid[0] = 0
-    core = valid[labels]
+    thick = cv2.morphologyEx(foreground, cv2.MORPH_OPEN, kernel)
+    n_core, core_labels, core_stats, _ = cv2.connectedComponentsWithStats(thick, 8)
+    core_valid = np.zeros(n_core, dtype=np.uint8)
+    area_min = max(30, int(fg_count * 0.0004))
+    for idx in range(1, n_core):
+        if core_stats[idx, cv2.CC_STAT_AREA] >= area_min:
+            core_valid[idx] = 1
+    core_valid[0] = 0
+    core = core_valid[core_labels] != 0
     if not np.any(core):
         return image, 0
 
-    # Restore original anti-aliased outlines around thick product regions,
-    # protecting mounting ears, labels, ports and normal edge details.
-    margin = max(3, diameter // 2)
-    protect = cv2.dilate(core, cv2.getStructuringElement(
-        cv2.MORPH_ELLIPSE, (2 * margin + 1, 2 * margin + 1)))
-    keep = (protect != 0)
-    removed = int(np.count_nonzero((foreground != 0) & ~keep))
-    if removed == 0 or removed > foreground_count * 0.18:
-        return image, 0
+    # Components of the ORIGINAL foreground are protected when they connect
+    # to a substantial equipment core, including all attached cable strands.
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(foreground, 8)
+    protected = np.zeros(count, dtype=np.bool_)
+    protected[np.unique(labels[(foreground != 0) & core])] = True
+    protected[0] = False
 
-    # No RGB inpainting: removed wires reveal the chosen pure-white/custom/
-    # transparent background during the existing alpha compositing step.
-    cleaned_alpha = alpha.copy()
-    cleaned_alpha[~keep] = 0
+    # An isolated, long, thin strand is a candidate for background cleanup.
+    # Short connectors, antennas, labels and free-standing equipment stay.
+    for idx in range(1, count):
+        if protected[idx]:
+            continue
+        w = int(stats[idx, cv2.CC_STAT_WIDTH])
+        h = int(stats[idx, cv2.CC_STAT_HEIGHT])
+        area = int(stats[idx, cv2.CC_STAT_AREA])
+        long = max(w, h) >= max(25, diameter * 4)
+        thin = min(w, h) <= max(6, diameter * 2)
+        sparse = area / max(1, w * h) < 0.20
+        if not long or not (thin or sparse):
+            protected[idx] = True
+
+    keep = protected[labels]
+    # Restore 1px anti-aliasing fringe around retained foreground components.
+    keep = cv2.dilate(keep.astype(np.uint8), np.ones((3, 3), np.uint8)) != 0
+    removed = int(np.count_nonzero((foreground != 0) & ~keep))
+    if removed == 0 or removed > fg_count * 0.18:
+        return image, 0
+    adjusted = alpha.copy()
+    adjusted[~keep] = 0
     cleaned = image.copy()
-    cleaned.putalpha(Image.fromarray(cleaned_alpha, 'L'))
+    cleaned.putalpha(Image.fromarray(adjusted, "L"))
     return cleaned, removed
