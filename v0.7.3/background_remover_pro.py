@@ -195,6 +195,8 @@ class BatchWorker(QThread):
         self.export_dpi = DPI
         self.model_name = os.environ.get("AURENIX_MODEL", "u2net").strip().lower()
         self.auto_wire_cleanup = True
+        # Default remains crisp for equipment; alpha matting is explicitly opt-in.
+        self.fine_edge_matting = False
 
         self.resume_event = threading.Event()
         self.resume_event.set()
@@ -344,7 +346,32 @@ class BatchWorker(QThread):
                         source_image = source_image.convert("RGB")
                     source_image.load()
 
-                result = remove(source_image, session=session)
+                if self.fine_edge_matting:
+                    # PyMatting may allocate large temporary CPU arrays. Enforce
+                    # a strict input size and free-RAM guard before invoking it.
+                    if source_image.width * source_image.height > 2_000_000:
+                        raise MemoryError(
+                            "Fine-edge alpha matting is limited to 2 megapixels "
+                            "per input to prevent RAM spikes. Use standard crisp "
+                            "mode for larger photographs."
+                        )
+                    import psutil
+                    if psutil.virtual_memory().available < 4 * 1024**3:
+                        raise MemoryError(
+                            "Fine-edge alpha matting needs at least 4 GiB free "
+                            "system RAM. Standard crisp mode is safer."
+                        )
+                    self.status.emit("Fine-edge alpha matting enabled (optional, slower)")
+                    result = remove(
+                        source_image, session=session, alpha_matting=True,
+                        alpha_matting_foreground_threshold=240,
+                        alpha_matting_background_threshold=10,
+                        alpha_matting_erode_size=5,
+                    )
+                else:
+                    # Preserve existing hard-edged product mode, without adding
+                    # any new matting/decontamination cost to normal 300-image jobs.
+                    result = remove(source_image, session=session)
                 if not isinstance(result, Image.Image):
                     raise TypeError("AI model returned an unexpected image type")
                 result = result.convert("RGBA")
@@ -1146,6 +1173,7 @@ class BackgroundRemoverPro(QMainWindow):
         self.worker.export_quality = getattr(self, "current_export_quality", 95)
         self.worker.export_dpi = getattr(self, "current_export_dpi", DPI)
         self.worker.auto_wire_cleanup = getattr(self, "current_auto_wire_cleanup", True)
+        self.worker.fine_edge_matting = getattr(self, "current_fine_edge_matting", False)
 
         self.worker.progress.connect(
             self.update_progress

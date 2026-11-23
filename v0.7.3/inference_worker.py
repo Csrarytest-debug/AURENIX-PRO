@@ -49,7 +49,8 @@ def main(config_path):
         worker = BatchWorker(config['images'], config['output_dir'],
                              int(config['width']), int(config['height']))
         for name in ('bg_mode', 'bg_color', 'export_format', 'export_quality',
-                     'export_dpi', 'model_name', 'auto_wire_cleanup'):
+                     'export_dpi', 'model_name', 'auto_wire_cleanup',
+                     'fine_edge_matting'):
             if name in config:
                 setattr(worker, name, config[name])
         worker.progress.connect(lambda *a: emit('progress', *a))

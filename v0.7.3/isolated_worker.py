@@ -28,6 +28,7 @@ class IsolatedBatchWorker(QObject):
         self.export_dpi = 400
         self.model_name = os.environ.get('AURENIX_MODEL', 'u2net').strip().lower()
         self.auto_wire_cleanup = True
+        self.fine_edge_matting = False
         self._process = QProcess(self)
         self._process.setProcessChannelMode(QProcess.ProcessChannelMode.SeparateChannels)
         self._process.readyReadStandardOutput.connect(self._discard_stdout)
@@ -78,6 +79,7 @@ class IsolatedBatchWorker(QObject):
                     'export_format': self.export_format, 'export_quality': self.export_quality,
                     'export_dpi': self.export_dpi, 'model_name': self.model_name,
                     'auto_wire_cleanup': self.auto_wire_cleanup,
+                    'fine_edge_matting': self.fine_edge_matting,
                 }, f)
             # The packaged EXE dispatches --aurenix-worker before importing Qt.
             if getattr(sys, 'frozen', False):

@@ -289,6 +289,19 @@ class AurenixPro(BackgroundRemoverPro):
         self.white_bg.setChecked(True)
         cl.addWidget(self.button('Choose Custom Color',self.choose_custom))
         settings_layout.addWidget(colors)
+        edge_box=QGroupBox('Fine Edge Quality (Optional)')
+        edge_layout=QVBoxLayout(edge_box)
+        self.fine_edge_checkbox=QCheckBox('Fine-edge alpha matting (slower; opt in)')
+        self.fine_edge_checkbox.setChecked(False)
+        self.fine_edge_checkbox.setToolTip(
+            'For hair, soft and semi-transparent boundaries only. Uses more RAM; '
+            'limited to 2 MP input with at least 4 GiB available RAM. '
+            'Leave OFF to preserve crisp broadcast-equipment edges, labels and ports.')
+        edge_layout.addWidget(self.fine_edge_checkbox)
+        edge_note=QLabel('Default OFF: preserves sharp equipment edges. Test one image before batch use.')
+        edge_note.setWordWrap(True)
+        edge_layout.addWidget(edge_note)
+        settings_layout.addWidget(edge_box)
         cleanup_box=QGroupBox('Automatic Wire Cleanup')
         cleanup_layout=QVBoxLayout(cleanup_box)
         self.auto_wire_checkbox=QCheckBox('Remove loose background wires automatically')
@@ -539,6 +552,7 @@ class AurenixPro(BackgroundRemoverPro):
         self.current_export_quality = self.export_quality.value()
         self.current_export_dpi = self.export_dpi.value()
         self.current_auto_wire_cleanup = self.auto_wire_checkbox.isChecked()
+        self.current_fine_edge_matting = self.fine_edge_checkbox.isChecked()
         if self.export_format.currentText() in ('JPEG', 'BMP') and self.transparent_bg.isChecked():
             self.white_bg.setChecked(True)
         self.current_bg_mode = ('transparent' if self.transparent_bg.isChecked() else
