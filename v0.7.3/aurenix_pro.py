@@ -305,12 +305,8 @@ class AurenixPro(BackgroundRemoverPro):
         settings_layout.addWidget(edge_box)
         cleanup_box=QGroupBox('Automatic Wire Cleanup')
         cleanup_layout=QVBoxLayout(cleanup_box)
-        self.auto_wire_checkbox=QCheckBox('Remove loose background wires automatically')
-        self.auto_wire_checkbox.setChecked(True)
-        self.auto_wire_checkbox.setToolTip(
-            'Context-aware conservative cleanup: remove detached background '
-            'strands but protect camera and power-adapter connections.')
-        cleanup_layout.addWidget(self.auto_wire_checkbox)
+        # One authoritative control per image. A competing global checkbox
+        # previously overrode the user's selected per-image wire policy.
         self.cable_context=QComboBox()
         self.cable_context.addItems([
             'Auto Context',
@@ -606,7 +602,7 @@ class AurenixPro(BackgroundRemoverPro):
         self.current_export_format = self.export_format.currentText()
         self.current_export_quality = self.export_quality.value()
         self.current_export_dpi = self.export_dpi.value()
-        self.current_auto_wire_cleanup = self.auto_wire_checkbox.isChecked()
+        self.current_auto_wire_cleanup = True  # per-photo policy is authoritative
         self.current_wire_policy_overrides = dict(self.wire_policy_overrides)
         self.current_fine_edge_matting = self.fine_edge_checkbox.isChecked()
         if self.export_format.currentText() in ('JPEG', 'BMP') and self.transparent_bg.isChecked():
