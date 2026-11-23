@@ -195,6 +195,7 @@ class BatchWorker(QThread):
         self.export_dpi = DPI
         self.model_name = os.environ.get("AURENIX_MODEL", "u2net").strip().lower()
         self.auto_wire_cleanup = True
+        self.wire_policy_overrides = {}  # separate input paths keep separate policies
         # Default remains crisp for equipment; alpha matting is explicitly opt-in.
         self.fine_edge_matting = False
 
@@ -376,13 +377,16 @@ class BatchWorker(QThread):
                     raise TypeError("AI model returned an unexpected image type")
                 result = result.convert("RGBA")
                 if self.auto_wire_cleanup:
-                    # Only trim thin, exposed alpha-mask strands. No second AI
-                    # model, no extra GPU memory and no edits to product RGB.
-                    from wire_cleanup import remove_loose_wires
-                    result, removed_pixels = remove_loose_wires(result)
+                    # Context is resolved separately for EACH input photograph.
+                    # AJA adapter kits retain wiring; camera/rack images only
+                    # remove detached thin background strands.
+                    from wire_cleanup import remove_loose_wires, choose_wire_policy
+                    policy = choose_wire_policy(image_path, self.wire_policy_overrides)
+                    result, removed_pixels = remove_loose_wires(result, mode=policy)
                     self.status.emit(
-                        f"Loose-wire cleanup: {removed_pixels} foreground pixels removed "
-                        "(conservative mode)"
+                        f"Selective cable policy [{policy}] {Path(image_path).name}: "
+                        f"{removed_pixels} detached pixels removed; inspect "
+                        "attached leads, labels and shadows before approval"
                     )
 
                 result = resize_image(result, self.width, self.height)
@@ -1173,6 +1177,8 @@ class BackgroundRemoverPro(QMainWindow):
         self.worker.export_quality = getattr(self, "current_export_quality", 95)
         self.worker.export_dpi = getattr(self, "current_export_dpi", DPI)
         self.worker.auto_wire_cleanup = getattr(self, "current_auto_wire_cleanup", True)
+        self.worker.wire_policy_overrides = dict(
+            getattr(self, "current_wire_policy_overrides", {}))
         self.worker.fine_edge_matting = getattr(self, "current_fine_edge_matting", False)
 
         self.worker.progress.connect(
