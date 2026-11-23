@@ -149,6 +149,7 @@ class AurenixPro(BackgroundRemoverPro):
     def zoom_change(self,v):
         self.change_zoom(v)
     def build_interface(self):
+        self.wire_policy_overrides = {}
         self.setWindowTitle(' ')
         self.resize(1648,930)
         self.setMinimumSize(1150,720)
@@ -307,10 +308,22 @@ class AurenixPro(BackgroundRemoverPro):
         self.auto_wire_checkbox=QCheckBox('Remove loose background wires automatically')
         self.auto_wire_checkbox.setChecked(True)
         self.auto_wire_checkbox.setToolTip(
-            'Conservative thin-strand cleanup after AI background removal. '
-            'Wires crossing the product may still require the Wire Mask tool.')
+            'Context-aware conservative cleanup: remove detached background '
+            'strands but protect camera and power-adapter connections.')
         cleanup_layout.addWidget(self.auto_wire_checkbox)
-        note=QLabel('Protects equipment detail. Complex or overlapping cables may need manual cleanup.')
+        self.cable_context=QComboBox()
+        self.cable_context.addItems([
+            'Camera / Rack — remove detached background wires',
+            'Adapter Kit — preserve adapter cables and leads'])
+        self.cable_context.setToolTip(
+            'Applies to the selected input only, not the full batch. '
+            'AJA IMG_5712 and IMG_5703 are automatically protected.')
+        self.cable_context.setEnabled(False)
+        self.cable_context.currentIndexChanged.connect(self.set_selected_cable_context)
+        cleanup_layout.addWidget(QLabel('Selected Image — Cable Handling'))
+        cleanup_layout.addWidget(self.cable_context)
+        note=QLabel('Attached cables are protected; uncertain crossings may '
+                    'require review. Model-based wire recognition is not yet validated.')
         note.setWordWrap(True)
         cleanup_layout.addWidget(note)
         settings_layout.addWidget(cleanup_box)
@@ -423,6 +436,33 @@ class AurenixPro(BackgroundRemoverPro):
             self._gpu_monitor.wait(3000)
         super().closeEvent(event)
 
+    def select_image(self, *args):
+        super().select_image(*args)
+        if not hasattr(self, 'cable_context'):
+            return
+        from wire_cleanup import choose_wire_policy, is_known_aja_sample
+        path=self.current_image()
+        selected=choose_wire_policy(path, self.wire_policy_overrides)
+        self.cable_context.blockSignals(True)
+        self.cable_context.setCurrentIndex(1 if selected == 'preserve_all' else 0)
+        self.cable_context.setEnabled(
+            bool(path) and self.worker is None and not is_known_aja_sample(path))
+        self.cable_context.blockSignals(False)
+
+    def set_selected_cable_context(self, index):
+        path=self.current_image()
+        if not path or self.worker is not None:
+            return
+        from wire_cleanup import is_known_aja_sample
+        if is_known_aja_sample(path):
+            return  # AJA example power leads are protected without manual steps
+        self.wire_policy_overrides[path] = (
+            'preserve_all' if index == 1 else 'selective')
+        self.statusBar().showMessage(
+            f'{Path(path).name}: ' +
+            ('preserve adapter leads' if index == 1 else
+             'trim only detached background strands'))
+
     def add_images(self,files):
         previous=len(self.images)
         super().add_images(files)
@@ -447,6 +487,7 @@ class AurenixPro(BackgroundRemoverPro):
         self.library.takeItem(row)
         self.outputs.pop(source, None)
         self.errors.discard(source)
+        self.wire_policy_overrides.pop(source, None)
         self.count.setText(f'Image List ({len(self.images)})')
         if not self.images:
             self.original_preview.clear()
@@ -463,6 +504,7 @@ class AurenixPro(BackgroundRemoverPro):
             return
         self.library.clear()
         self.images.clear()
+        self.wire_policy_overrides.clear()
         self.outputs.clear()
         self.errors.clear()
         self.selected_path = None
@@ -552,6 +594,7 @@ class AurenixPro(BackgroundRemoverPro):
         self.current_export_quality = self.export_quality.value()
         self.current_export_dpi = self.export_dpi.value()
         self.current_auto_wire_cleanup = self.auto_wire_checkbox.isChecked()
+        self.current_wire_policy_overrides = dict(self.wire_policy_overrides)
         self.current_fine_edge_matting = self.fine_edge_checkbox.isChecked()
         if self.export_format.currentText() in ('JPEG', 'BMP') and self.transparent_bg.isChecked():
             self.white_bg.setChecked(True)
