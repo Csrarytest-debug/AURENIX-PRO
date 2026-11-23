@@ -307,6 +307,11 @@ class BatchWorker(QThread):
             if self.stop_event.is_set():
                 break
 
+            # Reset per-item buffers before each attempt. Failed 4K images must
+            # not remain pinned by locals when the next item starts.
+            source_image = None
+            result = None
+            background = None
             try:
                 # Avoid worsening an already exhausted 16 GB machine.
                 try:
@@ -374,8 +379,6 @@ class BatchWorker(QThread):
                 succeeded += 1
                 self.completed.emit(image_path, str(output))
                 elapsed = time.perf_counter() - image_start
-                del source_image, result
-                gc.collect()
                 self.status.emit(
                     f"Saved {index + 1}/{total} | {elapsed:.1f}s/image | "
                     f"{succeeded} saved, {failed_count} failed"
@@ -387,6 +390,12 @@ class BatchWorker(QThread):
                 self.failed.emit(image_path, str(error))
                 if isinstance(error, MemoryError):
                     self.stop_event.set()
+            finally:
+                # In particular, release partial intermediates on per-image
+                # exceptions. Keep the reusable ONNX session for this batch.
+                source_image = None
+                result = None
+                background = None
                 gc.collect()
 
             self.progress.emit(index + 1, total)
