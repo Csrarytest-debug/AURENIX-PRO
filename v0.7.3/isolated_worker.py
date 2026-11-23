@@ -70,6 +70,17 @@ class IsolatedBatchWorker(QObject):
         try:
             Path(self._event_path).touch()
             Path(self._command_path).touch()
+            from wire_cleanup import POLICIES
+            exact_inputs = set(self.images)
+            scoped_policies = {}
+            for source_path, policy in self.wire_policy_overrides.items():
+                if source_path not in exact_inputs:
+                    continue
+                if policy not in POLICIES:
+                    raise ValueError(f"Invalid cable override for {Path(source_path).name}")
+                scoped_policies[source_path] = policy
+            # Immutable per-job snapshot: pause/resume/stop and retry cannot
+            # cause an override from another input to leak into this batch.
             with os.fdopen(fd, 'w', encoding='utf-8') as f:
                 json.dump({
                     'event_file': self._event_path,
@@ -80,7 +91,7 @@ class IsolatedBatchWorker(QObject):
                     'export_format': self.export_format, 'export_quality': self.export_quality,
                     'export_dpi': self.export_dpi, 'model_name': self.model_name,
                     'auto_wire_cleanup': self.auto_wire_cleanup,
-                    'wire_policy_overrides': self.wire_policy_overrides,
+                    'wire_policy_overrides': scoped_policies,
                     'fine_edge_matting': self.fine_edge_matting,
                 }, f)
             # The packaged EXE dispatches --aurenix-worker before importing Qt.
