@@ -5,8 +5,8 @@ ui=(root/'aurenix_pro.py').read_text()
 base=(root/'background_remover_pro.py').read_text()
 ipc=(root/'isolated_worker.py').read_text()
 worker=(root/'inference_worker.py').read_text()
-assert "self.auto_wire_checkbox.setChecked(True)" in ui
-assert 'self.current_auto_wire_cleanup = self.auto_wire_checkbox.isChecked()' in ui
+assert "self.auto_wire_checkbox=" not in ui, "Conflicting global wire toggle remains"
+assert "self.current_auto_wire_cleanup = True" in ui
 assert 'self.worker.auto_wire_cleanup = getattr(self, "current_auto_wire_cleanup", True)' in base
 assert "'auto_wire_cleanup': self.auto_wire_cleanup" in ipc
 assert "'auto_wire_cleanup'," in worker
