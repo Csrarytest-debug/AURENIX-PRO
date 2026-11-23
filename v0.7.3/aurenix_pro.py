@@ -365,21 +365,22 @@ class AurenixPro(BackgroundRemoverPro):
         self.output_label=QLabel('Output Folder: '+str(self.output_dir))
         self.output_label.setVisible(False)  # for compatibility with the recovered base worker
 
-        self.statusBar().showMessage('Ready — low-memory mode (U2Net) | AI loads only after Start Processing')
+        self.statusBar().showMessage('Ready — safe startup: AI and GPU polling are idle until processing')
         self.navigate(0)
         self._gpu_monitor = GpuMonitor(self)
         self._gpu_monitor.metrics.connect(self._gpu_metrics_ready)
         self.monitor_timer = QTimer(self)
         self.monitor_timer.timeout.connect(self.update_monitors)
-        self.monitor_timer.start(15000)
-        # The window paints first; no GPU probing or inference imports at startup.
-        QTimer.singleShot(2500, self.update_monitors)
+        # Do not launch nvidia-smi during app startup. Run GPU telemetry only
+        # while actively processing; this prevents an idle GPU-driver probe.
+        self.gpu_label.setText('GPU idle — monitoring starts with processing')
+        QTimer.singleShot(4000, self.update_ram_monitor)
     def _gpu_metrics_ready(self, message, percent):
         self.gpu_label.setText(message)
         self.gpu_bar.setValue(percent)
 
-    def update_monitors(self):
-        """Low-overhead RAM telemetry; GPU subprocess runs in a separate thread."""
+    def update_ram_monitor(self):
+        """RAM-only telemetry: never launches NVIDIA tools or AI inference."""
         try:
             import psutil
             m = psutil.virtual_memory()
@@ -392,8 +393,17 @@ class AurenixPro(BackgroundRemoverPro):
         except Exception:
             self.ram_label.setText('RAM\nUnavailable')
             self.ram_bar.setValue(0)
-        if not self._gpu_monitor.isRunning():
+    def update_monitors(self):
+        """Monitor the GPU only for an active AI batch."""
+        self.update_ram_monitor()
+        if self.worker is not None and not self._gpu_monitor.isRunning():
             self._gpu_monitor.start()
+
+    def _processing_monitor_finished(self):
+        self.monitor_timer.stop()
+        self.gpu_label.setText('GPU idle — monitoring starts with processing')
+        self.gpu_bar.setValue(0)
+        self.update_ram_monitor()
 
     def closeEvent(self, event):
         if self._gpu_monitor.isRunning():
@@ -535,6 +545,10 @@ class AurenixPro(BackgroundRemoverPro):
                                 'custom' if self.custom_bg.isChecked() else 'white')
         self.ai_provider_label.setText('AI model: ' + os.environ.get('AURENIX_MODEL', 'u2net') + ' (isolated engine on Start)')
         super().start_worker(files)
+        if self.worker is not None:
+            self.worker.finished.connect(self._processing_monitor_finished)
+            self.monitor_timer.start(15000)
+            self.update_monitors()
     def export_selection_changed(self, fmt):
         if fmt in ('JPEG', 'BMP') and self.transparent_bg.isChecked():
             self.white_bg.setChecked(True)
